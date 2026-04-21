@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "356902458944",
+    "project_id": "smm-service-557d6",
+    "storage_bucket": "smm-service-557d6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:356902458944:android:5187fdc23e5dc5b61931a5",
+        "android_client_info": {
+          "package_name": "com.example.customer_smm"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "356902458944-28g0l7f2sigm9jc05nfmmb28da8fpvkh.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC0VVqMg-dmdkZ14H5LYFAl_rex6k7nF0I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "356902458944-28g0l7f2sigm9jc05nfmmb28da8fpvkh.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
