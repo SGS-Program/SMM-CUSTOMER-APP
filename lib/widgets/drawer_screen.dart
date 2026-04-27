@@ -1,5 +1,7 @@
-import 'dart:io';
-import 'package:customer_smm/Drawer%20Section/Depot%20Section/deport%20report.dart';
+import 'package:customer_smm/Drawer%20Section/Supplier%20Section/supplier_dashboard_screen.dart';
+import 'package:customer_smm/Drawer%20Section/Supplier%20Section/supplier_statement_screen.dart';
+import 'package:customer_smm/Drawer%20Section/Supplier%20Section/all_quotations_screen.dart';
+import 'package:customer_smm/Drawer%20Section/Depot%20Section/depot_report_screen.dart';
 import 'package:customer_smm/Login%20Section/login_screen.dart';
 import 'package:customer_smm/Profile%20Section/profile_state.dart';
 import 'package:flutter/material.dart';
@@ -68,14 +70,53 @@ class CustomAppDrawer extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const DeportReportScreen(),
+                        builder: (context) => const DepotReportScreen(),
                       ),
                     );
                   },
                 ),
                 _buildDrawerItem(
                   context,
-                  icon: Icons.chat_bubble_outline,
+                  icon: Icons.business,
+                  title: "Supplier",
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const SupplierDashboardScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _buildDrawerItem(
+                  context,
+                  icon: Icons.book_outlined,
+                  title: "Statement",
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const SupplierStatementScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _buildDrawerItem(
+                  context,
+                  icon: Icons.bookmark_add_outlined,
+                  title: "Raise Quotation",
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AllQuotationsScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _buildDrawerItem(
+                  context,
+                  icon: Icons.star_border,
                   title: "Rating & Reviews",
                   onTap: () {
                     Navigator.push(

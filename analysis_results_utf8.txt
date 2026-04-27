@@ -1,0 +1,60 @@
+﻿Analyzing customer_smm...                                       
+
+   info - Don't use 'BuildContext's across async gaps - lib\Complaint Section\complaint_details_screen.dart:50:30 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\Complaint Section\complaint_details_screen.dart:92:32 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\Complaint Section\complaint_details_screen.dart:105:32 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\Complaint Section\complaint_details_screen.dart:113:30 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\Complaint Section\complaint_details_screen.dart:121:28 - use_build_context_synchronously
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\Complaint Section\complaint_details_screen.dart:198:61 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\Complaint Section\complaint_details_screen.dart:509:37 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\Complaint Section\complaint_details_screen.dart:1002:59 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\Complaint Section\complaint_details_screen.dart:1005:33 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\Complaint Section\complaint_details_screen.dart:1019:50 - deprecated_member_use
+   info - Unnecessary use of multiple underscores - lib\Complaint Section\complaint_details_screen.dart:1094:20 - unnecessary_underscores
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\Complaint Section\complaint_details_screen.dart:1098:39 - deprecated_member_use
+   info - The file name 'deport report.dart' isn't a lower_case_with_underscores identifier - lib\Drawer Section\Depot Section\deport report.dart:1:1 - file_names
+   info - Unnecessary braces in a string interpolation - lib\Drawer Section\Depot Section\depot_details_screen.dart:94:21 - unnecessary_brace_in_string_interps
+warning - The declaration '_formatDateTime' isn't referenced - lib\Drawer Section\Dispatchment Screens\dispatchment_details_screen.dart:118:10 - unused_element
+   info - Unnecessary braces in a string interpolation - lib\Drawer Section\Dispatchment Screens\dispatchment_details_screen.dart:140:66 - unnecessary_brace_in_string_interps
+   info - Unnecessary use of 'toList' in a spread - lib\Drawer Section\rating_reviews_screen.dart:144:82 - unnecessary_to_list_in_spreads
+warning - Unused import: 'package:customer_smm/dashboard.dart' - lib\Login Section\login_screen.dart:2:8 - unused_import
+   info - Use a 'SizedBox' to add whitespace to a layout - lib\Login Section\login_screen.dart:230:30 - sized_box_for_whitespace
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\Login Section\login_screen.dart:276:60 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\Login Section\otp_verification_screen.dart:267:54 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\Login Section\otp_verification_screen.dart:315:52 - deprecated_member_use
+warning - Unused import: 'dart:io' - lib\Profile Section\edit_profile_screen.dart:1:8 - unused_import
+   info - Don't use 'BuildContext's across async gaps - lib\Profile Section\edit_profile_screen.dart:236:40 - use_build_context_synchronously
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\Profile Section\edit_profile_screen.dart:300:52 - deprecated_member_use
+warning - Unused import: 'Complaint Section/my_complaints_screen.dart' - lib\dashboard.dart:11:8 - unused_import
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\dashboard.dart:168:55 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\dashboard.dart:323:33 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\dashboard.dart:369:33 - deprecated_member_use
+warning - The declaration '_buildStatusCard' isn't referenced - lib\dashboard.dart:435:10 - unused_element
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\dashboard.dart:447:33 - deprecated_member_use
+warning - The declaration '_buildResolvedIcon' isn't referenced - lib\dashboard.dart:659:10 - unused_element
+   info - Don't invoke 'print' in production code - lib\main.dart:17:3 - avoid_print
+   info - Don't invoke 'print' in production code - lib\main.dart:32:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\main.dart:94:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\main.dart:100:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\main.dart:102:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\main.dart:107:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\main.dart:112:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\main.dart:117:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\main.dart:158:7 - avoid_print
+   info - The private field _pickedFiles could be 'final' - lib\raise_complaint_screen.dart:90:14 - prefer_final_fields
+   info - The private field _audioPaths could be 'final' - lib\raise_complaint_screen.dart:92:16 - prefer_final_fields
+warning - The value of the field '_selectedComplaintTitleName' isn't used - lib\raise_complaint_screen.dart:107:11 - unused_field
+warning - The value of the field '_isLoadingProducts' isn't used - lib\raise_complaint_screen.dart:108:8 - unused_field
+warning - The value of the field '_isLoadingComplaintTitles' isn't used - lib\raise_complaint_screen.dart:109:8 - unused_field
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\raise_complaint_screen.dart:562:37 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\raise_complaint_screen.dart:576:50 - deprecated_member_use
+warning - A value of type 'Null' can't be returned by the 'onError' handler because it must be assignable to 'FutureOr<Position>' - lib\raise_complaint_screen.dart:797:20 - invalid_return_type_for_catch_error
+warning - The operand can't be 'null', so the condition is always 'false' - lib\raise_complaint_screen.dart:800:20 - unnecessary_null_comparison
+warning - Dead code - lib\raise_complaint_screen.dart:800:29 - dead_code
+warning - A value of type 'Null' can't be returned by the 'onError' handler because it must be assignable to 'FutureOr<Position>' - lib\utils\device_services.dart:44:24 - invalid_return_type_for_catch_error
+warning - The operand can't be 'null', so the condition is always 'true' - lib\utils\device_services.dart:47:24 - unnecessary_null_comparison
+   info - Use a 'SizedBox' to add whitespace to a layout - lib\widgets\bottom_nav.dart:60:16 - sized_box_for_whitespace
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\bottom_nav.dart:90:61 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\bottom_nav.dart:98:63 - deprecated_member_use
+warning - Unused import: 'dart:io' - lib\widgets\drawer_screen.dart:1:8 - unused_import
+

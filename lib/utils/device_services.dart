@@ -33,16 +33,18 @@ class DeviceServices {
             permission == LocationPermission.whileInUse) {
           Position? position = await Geolocator.getLastKnownPosition();
 
-          position ??=
-              await Geolocator.getCurrentPosition(
+          if (position == null) {
+            try {
+              position = await Geolocator.getCurrentPosition(
                 locationSettings: const LocationSettings(
                   accuracy: LocationAccuracy.medium,
                   timeLimit: Duration(seconds: 5),
                 ),
-              ).catchError((e) {
-                debugPrint("⚠️ Quick location fetch failed, using default: $e");
-                return null;
-              });
+              );
+            } catch (e) {
+              debugPrint("⚠️ Quick location fetch failed, using default: $e");
+            }
+          }
 
           if (position != null) {
             lt = position.latitude.toString();

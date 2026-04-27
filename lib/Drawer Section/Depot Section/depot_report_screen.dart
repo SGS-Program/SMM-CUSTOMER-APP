@@ -5,14 +5,14 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'depot_details_screen.dart';
 
-class DeportReportScreen extends StatefulWidget {
-  const DeportReportScreen({super.key});
+class DepotReportScreen extends StatefulWidget {
+  const DepotReportScreen({super.key});
 
   @override
-  State<DeportReportScreen> createState() => _DeportReportScreenState();
+  State<DepotReportScreen> createState() => _DepotReportScreenState();
 }
 
-class _DeportReportScreenState extends State<DeportReportScreen> {
+class _DepotReportScreenState extends State<DepotReportScreen> {
   List<dynamic> _reports = [];
   bool _isLoading = true;
   String? _errorMessage;
@@ -98,7 +98,7 @@ class _DeportReportScreenState extends State<DeportReportScreen> {
         'Sep',
         'Oct',
         'Nov',
-        'Dec'
+        'Dec',
       ];
       return '${dt.day} ${months[dt.month]} ${dt.year}';
     } catch (_) {
@@ -141,55 +141,54 @@ class _DeportReportScreenState extends State<DeportReportScreen> {
                     child: CircularProgressIndicator(color: Color(0xFF2CB9E5)),
                   )
                 : _errorMessage != null
-                    ? _buildErrorView()
-                    : _reports.isEmpty
-                        ? _buildEmptyView()
-                        : RefreshIndicator(
-                            onRefresh: _fetchReports,
-                            color: const Color(0xFF2CB9E5),
-                            child: ListView.builder(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 20),
-                              physics: const BouncingScrollPhysics(),
-                              itemCount: _reports.length,
-                              itemBuilder: (context, index) {
-                                final item = _reports[index];
-                                final String title =
-                                    item['pro_name']?.toString() ?? "Product";
-                                final String subtitle =
-                                    item['issue']?.toString() ?? "Report";
-                                final String date =
-                                    _formatDate(item['date']?.toString());
-                                final String status =
-                                    item['stus']?.toString() ?? "Status";
-                                final String imageUrl =
-                                    item['upload_img']?.toString() ?? '';
+                ? _buildErrorView()
+                : _reports.isEmpty
+                ? _buildEmptyView()
+                : RefreshIndicator(
+                    onRefresh: _fetchReports,
+                    color: const Color(0xFF2CB9E5),
+                    child: ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: _reports.length,
+                      itemBuilder: (context, index) {
+                        final item = _reports[index];
+                        final String title =
+                            item['pro_name']?.toString() ?? "Product";
+                        final String subtitle =
+                            item['issue']?.toString() ?? "Report";
+                        final String date = _formatDate(
+                          item['date']?.toString(),
+                        );
+                        final String status =
+                            item['stus']?.toString() ?? "Status";
+                        final String imageUrl =
+                            item['upload_img']?.toString() ?? '';
 
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 15),
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              DepotDetailsScreen(
-                                                  depotData: item),
-                                        ),
-                                      );
-                                    },
-                                    child: _buildProductCard(
-                                      title: title,
-                                      subtitle: subtitle,
-                                      date: date,
-                                      lastService: "Status: $status",
-                                      imageUrl: imageUrl,
-                                    ),
-                                  ),
-                                );
-                              },
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 15),
+                          child: GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      DepotDetailsScreen(depotData: item),
+                                ),
+                              );
+                            },
+                            child: _buildProductCard(
+                              title: title,
+                              subtitle: subtitle,
+                              date: date,
+                              lastService: "Status: $status",
+                              imageUrl: imageUrl,
                             ),
                           ),
+                        );
+                      },
+                    ),
+                  ),
           ),
         ],
       ),
@@ -214,9 +213,12 @@ class _DeportReportScreenState extends State<DeportReportScreen> {
             ElevatedButton(
               onPressed: _fetchReports,
               style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2CB9E5)),
-              child:
-                  Text("Retry", style: GoogleFonts.outfit(color: Colors.white)),
+                backgroundColor: const Color(0xFF2CB9E5),
+              ),
+              child: Text(
+                "Retry",
+                style: GoogleFonts.outfit(color: Colors.white),
+              ),
             ),
           ],
         ),
@@ -229,8 +231,11 @@ class _DeportReportScreenState extends State<DeportReportScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.inventory_2_outlined,
-              size: 60, color: Colors.grey.shade300),
+          Icon(
+            Icons.inventory_2_outlined,
+            size: 60,
+            color: Colors.grey.shade300,
+          ),
           const SizedBox(height: 16),
           Text(
             "No depot reports found",

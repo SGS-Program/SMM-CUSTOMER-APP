@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:customer_smm/dashboard.dart';
+
 import 'otp_verification_screen.dart';
 import 'package:customer_smm/utils/device_services.dart';
 import 'package:customer_smm/widgets/bottom_nav.dart';

@@ -780,32 +780,28 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
 
       Position? position = await Geolocator.getLastKnownPosition();
 
-      if (position != null) {
-        _latitude = position.latitude.toString();
-        _longitude = position.longitude.toString();
-        _updateCityAndAddress(position);
-      }
-
-      position ??=
-          await Geolocator.getCurrentPosition(
+      if (position == null) {
+        try {
+          position = await Geolocator.getCurrentPosition(
             locationSettings: const LocationSettings(
               accuracy: LocationAccuracy.medium,
               timeLimit: Duration(seconds: 5),
             ),
-          ).catchError((e) {
-            debugPrint("⚠️ Quick location fetch failed: $e");
-            return null;
-          });
+          );
+        } catch (e) {
+          debugPrint("⚠️ Quick location fetch failed: $e");
+        }
+      }
 
       if (position == null) {
         if (_cityName == null) setState(() => _isFetchingLocation = false);
         return;
       }
 
-      final prefs = await SharedPreferences.getInstance();
-
       _latitude = position.latitude.toString();
       _longitude = position.longitude.toString();
+
+      final prefs = await SharedPreferences.getInstance();
       prefs.setString('lt', _latitude!);
       prefs.setString('ln', _longitude!);
 

@@ -68,9 +68,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final data = jsonDecode(response.body);
         if (data['error'] == false) {
           setState(() {
-            openTickets = data['open_tickets'] ?? 0;
-            inProgressTickets = data['inprocess'] ?? 0;
-            closedTickets = data['resolved'] ?? data['closed'] ?? 0;
+            openTickets = int.tryParse(data['open_tickets'].toString()) ?? 0;
+            inProgressTickets = int.tryParse(data['inprocess'].toString()) ?? 0;
+            closedTickets = int.tryParse((data['resolved'] ?? data['closed']).toString()) ?? 0;
             isLoading = false;
           });
         } else {
