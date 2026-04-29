@@ -20,15 +20,25 @@ class CustomBottomNav extends StatefulWidget {
 
 class _CustomBottomNavState extends State<CustomBottomNav> {
   int _currentIndex = 0;
+  final ValueNotifier<int> _complaintsRefreshNotifier = ValueNotifier<int>(0);
 
-  final List<Widget> _screens = [
-    const DashboardScreen(),
-    const RaiseComplaintScreen(),
-    const MyProductScreen(),
-    const MyComplaintsScreen(),
-  ];
+  late final List<Widget> _screens;
+
+  @override
+  void initState() {
+    super.initState();
+    _screens = [
+      const DashboardScreen(),
+      const RaiseComplaintScreen(),
+      const MyProductScreen(),
+      MyComplaintsScreen(refreshNotifier: _complaintsRefreshNotifier),
+    ];
+  }
 
   void updateIndex(int index) {
+    if (index == 3) {
+      _complaintsRefreshNotifier.value++;
+    }
     setState(() {
       _currentIndex = index;
     });
@@ -103,5 +113,10 @@ class _CustomBottomNavState extends State<CustomBottomNav> {
         ],
       ),
     );
+  }
+  @override
+  void dispose() {
+    _complaintsRefreshNotifier.dispose();
+    super.dispose();
   }
 }

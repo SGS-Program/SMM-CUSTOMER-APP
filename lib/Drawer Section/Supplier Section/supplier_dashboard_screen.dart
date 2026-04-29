@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'supplier_statement_screen.dart';
 
 class SupplierDashboardScreen extends StatefulWidget {
   const SupplierDashboardScreen({super.key});
@@ -209,7 +210,14 @@ class _SupplierDashboardScreenState extends State<SupplierDashboardScreen> {
             width: 150,
             height: 45,
             child: ElevatedButton(
-              onPressed: () {},
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SupplierStatementScreen(),
+                  ),
+                );
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF1976D2),
                 shape: RoundedRectangleBorder(

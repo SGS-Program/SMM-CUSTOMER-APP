@@ -56,7 +56,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       // Ensure Device Info is fetched if not already
-      if (_lt == null || _ln == null || _deviceId == null) {
+      if (_lt == null || _ln == null || _deviceId == null || _lt == '0.0' || _ln == '0.0') {
         final deviceData = await DeviceServices.getAndStoreDeviceInfo();
         _lt = deviceData['lt'];
         _ln = deviceData['ln'];
@@ -66,6 +66,16 @@ class _LoginScreenState extends State<LoginScreen> {
       final ln = _ln ?? '0.0';
       final lt = _lt ?? '0.0';
       final deviceId = _deviceId ?? '123';
+
+      if (ln == '0.0' || lt == '0.0') {
+        setState(() => _isLoading = false);
+        if (mounted) {
+          DeviceServices.showLocationRequiredPopup(context, onRetry: () {
+            _fetchDeviceInfo();
+          });
+        }
+        return;
+      }
 
       debugPrint("🔍 DEVICE INFO FOR LOGIN");
       debugPrint(" Device ID : $deviceId");

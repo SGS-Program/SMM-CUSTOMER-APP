@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'Drawer Section/Depot Section/depot_report_screen.dart';
 import 'widgets/drawer_screen.dart';
 import 'raise_complaint_screen.dart';
 import 'notification_screen.dart';
@@ -70,7 +71,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           setState(() {
             openTickets = int.tryParse(data['open_tickets'].toString()) ?? 0;
             inProgressTickets = int.tryParse(data['inprocess'].toString()) ?? 0;
-            closedTickets = int.tryParse((data['resolved'] ?? data['closed']).toString()) ?? 0;
+            closedTickets =
+                int.tryParse((data['resolved'] ?? data['closed']).toString()) ??
+                0;
             isLoading = false;
           });
         } else {
@@ -263,7 +266,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         Expanded(
                           child: _buildSmallActionCard(
                             icon: _buildToolsIcon(),
-                            title: "Book a service",
+                            title: "Deport Report",
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const DepotReportScreen(),
+                                ),
+                              );
+                            },
                           ),
                         ),
                         const SizedBox(width: 15),

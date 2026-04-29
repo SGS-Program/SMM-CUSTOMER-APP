@@ -7,7 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'complaint_details_screen.dart';
 
 class MyComplaintsScreen extends StatefulWidget {
-  const MyComplaintsScreen({super.key});
+  final ValueNotifier<int>? refreshNotifier;
+  const MyComplaintsScreen({super.key, this.refreshNotifier});
 
   @override
   State<MyComplaintsScreen> createState() => _MyComplaintsScreenState();
@@ -31,14 +32,52 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchComplaints();
+    _loadCachedComplaints().then((_) {
+      _fetchComplaints(showLoading: allComplaints.isEmpty);
+    });
+
+    widget.refreshNotifier?.addListener(_handleRefresh);
   }
 
-  Future<void> _fetchComplaints() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = '';
-    });
+  @override
+  void dispose() {
+    widget.refreshNotifier?.removeListener(_handleRefresh);
+    super.dispose();
+  }
+
+  void _handleRefresh() {
+    if (mounted) {
+      _fetchComplaints(showLoading: false);
+    }
+  }
+
+  Future<void> _loadCachedComplaints() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? cachedData = prefs.getString('cached_complaints');
+      if (cachedData != null) {
+        final List<dynamic> decoded = json.decode(cachedData);
+        if (mounted) {
+          setState(() {
+            allComplaints = decoded
+                .map((item) => Map<String, dynamic>.from(item))
+                .toList();
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Load cached complaints error: $e");
+    }
+  }
+
+  Future<void> _fetchComplaints({bool showLoading = true}) async {
+    if (showLoading) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = '';
+      });
+    }
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -121,10 +160,15 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
                   "tech_email": hasEngineer
                       ? engineer['email']?.toString() ?? ''
                       : '',
+                  "hpy_code": item['hpy_code']?.toString() ?? '',
                 };
               }).toList();
               _isLoading = false;
             });
+
+            // Save to cache
+            final prefs = await SharedPreferences.getInstance();
+            prefs.setString('cached_complaints', json.encode(allComplaints));
           }
         } else {
           if (mounted) {
@@ -202,6 +246,8 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
             ),
           ),
 
+          const SizedBox(height: 10),
+
           // Complaints List
           Expanded(
             child: _isLoading
@@ -214,7 +260,7 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
                 ? _buildEmptyState()
                 : RefreshIndicator(
                     color: const Color(0xFF2CB9E5),
-                    onRefresh: _fetchComplaints,
+                    onRefresh: () => _fetchComplaints(showLoading: false),
                     child: ListView.builder(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       physics: const BouncingScrollPhysics(),
@@ -295,7 +341,7 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
           ),
           const SizedBox(height: 20),
           ElevatedButton(
-            onPressed: _fetchComplaints,
+            onPressed: () => _fetchComplaints(),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF2CB9E5),
               shape: RoundedRectangleBorder(

@@ -422,6 +422,14 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
 
   // SUBMIT COMPLAINT
   Future<void> _submitComplaint() async {
+    if (_isRecording) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Please stop the audio recording before submitting"),
+        ),
+      );
+      return;
+    }
     if (_selectedProductId == null ||
         _selectedComplaintTitleId == null ||
         _customerNameController.text.trim().isEmpty ||
@@ -620,7 +628,10 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
                     ),
                     elevation: 0,
                   ),
-                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop();
+                    CustomBottomNav.changeIndex(context, 3);
+                  },
                   child: Text(
                     "OK",
                     style: GoogleFonts.outfit(
