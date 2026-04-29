@@ -152,14 +152,15 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
                   "expected_date": item['expected_date']?.toString() ?? '',
                   "resolved_date": item['resolved_date']?.toString() ?? '',
                   "tech_name": hasEngineer
-                      ? engineer['name']?.toString() ?? ''
+                      ? engineer['tech_name']?.toString() ?? ''
                       : '',
                   "tech_mobile": hasEngineer
-                      ? engineer['mobile']?.toString() ?? ''
+                      ? engineer['tech_mobile']?.toString() ?? ''
                       : '',
                   "tech_email": hasEngineer
-                      ? engineer['email']?.toString() ?? ''
+                      ? engineer['tech_email']?.toString() ?? ''
                       : '',
+                  "engineer": item['engineer'],
                   "hpy_code": item['hpy_code']?.toString() ?? '',
                 };
               }).toList();

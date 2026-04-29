@@ -955,7 +955,12 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
   }
 
   Widget _buildTimelineSection(Map<String, dynamic> complaint) {
-    final status = complaint['status'] ?? '';
+    final status = (complaint['status'] ?? '').toString().toLowerCase();
+    
+    bool isInProgress = status == "assigned" || status == "on the way" || status == "completed";
+    bool isOnTheWay = status == "on the way" || status == "completed";
+    bool isCompleted = status == "completed";
+
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -985,7 +990,7 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
             icon: Icons.info,
             iconColor: Colors.green,
             isLast: false,
-            isActive: status == "Assigned" || status == "Completed",
+            isActive: isInProgress,
           ),
           _buildTimelineItem(
             title: "On the Way",
@@ -993,7 +998,7 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
             icon: Icons.directions_bike,
             iconColor: Colors.green,
             isLast: false,
-            isActive: status == "On the Way" || status == "Completed",
+            isActive: isOnTheWay,
           ),
           _buildTimelineItem(
             title: "Expected date",
@@ -1002,7 +1007,7 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
             icon: Icons.hourglass_empty,
             iconColor: Colors.green,
             isLast: false,
-            isActive: status == "Completed",
+            isActive: isCompleted,
           ),
           _buildTimelineItem(
             title: "Resolved",
@@ -1011,7 +1016,7 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
             icon: Icons.hourglass_empty,
             iconColor: Colors.green,
             isLast: true,
-            isActive: status == "Completed",
+            isActive: isCompleted,
           ),
         ],
       ),
@@ -1126,17 +1131,23 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
           const SizedBox(height: 20),
           _buildDetailRow(
             "Name",
-            complaint['tech_name']?.toString() ?? 'N/A',
+            (complaint['tech_name']?.toString() ?? '').isNotEmpty
+                ? complaint['tech_name'].toString()
+                : 'N/A',
             isBold: true,
           ),
           _buildDetailRow(
             "Mobile",
-            complaint['tech_mobile']?.toString() ?? 'N/A',
+            (complaint['tech_mobile']?.toString() ?? '').isNotEmpty
+                ? complaint['tech_mobile'].toString()
+                : 'N/A',
             isBold: true,
           ),
           _buildDetailRow(
             "Email",
-            complaint['tech_email']?.toString() ?? 'N/A',
+            (complaint['tech_email']?.toString() ?? '').isNotEmpty
+                ? complaint['tech_email'].toString()
+                : 'N/A',
             isBold: true,
           ),
         ],
