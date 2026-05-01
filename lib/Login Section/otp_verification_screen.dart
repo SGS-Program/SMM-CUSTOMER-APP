@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sms_autofill/sms_autofill.dart';
 
 class OtpVerificationSheet extends StatefulWidget {
   final String phoneNumber;
@@ -30,13 +31,40 @@ class OtpVerificationSheet extends StatefulWidget {
   State<OtpVerificationSheet> createState() => _OtpVerificationSheetState();
 }
 
-class _OtpVerificationSheetState extends State<OtpVerificationSheet> {
+class _OtpVerificationSheetState extends State<OtpVerificationSheet> with CodeAutoFill {
   final List<FocusNode> _focusNodes = List.generate(6, (index) => FocusNode());
   final List<TextEditingController> _controllers = List.generate(
     6,
     (index) => TextEditingController(),
   );
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _startListening();
+  }
+
+  Future<void> _startListening() async {
+    await SmsAutoFill().listenForCode();
+    debugPrint("📥 SMS Listener Started...");
+    final signature = await SmsAutoFill().getAppSignature;
+    debugPrint("🔑 Local App Signature for SMS: $signature");
+  }
+
+  @override
+  void codeUpdated() {
+    if (code != null && code!.isNotEmpty) {
+      debugPrint("📱 SMS OTP Received: $code");
+      String numericOtp = code!.replaceAll(RegExp(r'[^0-9]'), '');
+      if (numericOtp.length == 6) {
+        for (int i = 0; i < 6; i++) {
+          _controllers[i].text = numericOtp[i];
+        }
+        _verifyOtp();
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -46,6 +74,7 @@ class _OtpVerificationSheetState extends State<OtpVerificationSheet> {
     for (var controller in _controllers) {
       controller.dispose();
     }
+    unregisterListener();
     super.dispose();
   }
 

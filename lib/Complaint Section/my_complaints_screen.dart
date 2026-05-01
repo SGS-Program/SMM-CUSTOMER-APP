@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'complaint_details_screen.dart';
 
 class MyComplaintsScreen extends StatefulWidget {
@@ -165,6 +166,20 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
                 };
               }).toList();
               _isLoading = false;
+            });
+
+            // Precache first few images in background
+            Future.microtask(() {
+              if (!mounted) return;
+              final imagesToPrecache = allComplaints
+                  .map((c) => c['photo']?.toString() ?? '')
+                  .where((url) => url.isNotEmpty)
+                  .take(10)
+                  .toList();
+
+              for (final url in imagesToPrecache) {
+                precacheImage(CachedNetworkImageProvider(url), context);
+              }
             });
 
             // Save to cache

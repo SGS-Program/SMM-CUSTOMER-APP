@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'product_details_screen.dart';
 
 class MyProductScreen extends StatefulWidget {
@@ -48,7 +49,6 @@ class _MyProductScreenState extends State<MyProductScreen> {
         return;
       }
 
-      // ── MATCHING POSTMAN EXACTLY (Multipart Form Data) ──
       var request = http.MultipartRequest(
         'POST',
         Uri.parse('https://erpsmart.in/total/api/m_api/'),
@@ -91,6 +91,10 @@ class _MyProductScreenState extends State<MyProductScreen> {
                   'qty': item['qty']?.toString() ?? '0',
                   'date': item['date']?.toString() ?? '',
                   'order_id': order['id']?.toString() ?? 'N/A',
+                  'pimage':
+                      item['pimage']?.toString() ??
+                      item['photo']?.toString() ??
+                      '',
                 });
               }
             }
@@ -104,19 +108,39 @@ class _MyProductScreenState extends State<MyProductScreen> {
                 errorMessage = "No products found for this account.";
               }
             });
+
+            // Precache first few images in background
+            Future.microtask(() {
+              if (!mounted) return;
+              final imagesToPrecache = products
+                  .map((p) => p['pimage']?.toString() ?? '')
+                  .where((url) => url.isNotEmpty && url.startsWith('http'))
+                  .take(10)
+                  .toList();
+
+              for (final url in imagesToPrecache) {
+                precacheImage(CachedNetworkImageProvider(url), context);
+              }
+            });
           }
         } else {
+          if (mounted) {
+            setState(() {
+              errorMessage =
+                  jsonData['message'] ??
+                  jsonData['error_msg'] ??
+                  "No Data Found";
+              isLoading = false;
+            });
+          }
+        }
+      } else {
+        if (mounted) {
           setState(() {
-            errorMessage =
-                jsonData['message'] ?? jsonData['error_msg'] ?? "No Data Found";
+            errorMessage = "Server Error: ${response.statusCode}";
             isLoading = false;
           });
         }
-      } else {
-        setState(() {
-          errorMessage = "Server Error: ${response.statusCode}";
-          isLoading = false;
-        });
       }
     } catch (e) {
       debugPrint("❌ Product Error: $e");
@@ -204,7 +228,7 @@ class _MyProductScreenState extends State<MyProductScreen> {
                             units: "$qty Units",
                             date: dateStr.isNotEmpty ? dateStr : "N/A",
                             lastService: "Installed",
-                            imagePath: "assets/breaker.png",
+                            imagePath: item['pimage'] ?? "",
                           ),
                         ),
                       );
@@ -320,17 +344,28 @@ class _MyProductScreenState extends State<MyProductScreen> {
               child: Stack(
                 children: [
                   Center(
-                    child: Image.asset(
-                      imagePath,
-                      width: 100,
-                      height: 100,
-                      fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) => Icon(
-                        Icons.precision_manufacturing_outlined,
-                        size: 40,
-                        color: const Color(0xFF2CB9E5).withAlpha(50),
-                      ),
-                    ),
+                    child: imagePath.isNotEmpty
+                        ? (imagePath.startsWith('http')
+                              ? CachedNetworkImage(
+                                  imageUrl: imagePath,
+                                  width: 100,
+                                  height: 100,
+                                  fit: BoxFit.contain,
+                                  placeholder: (context, url) => const Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                  errorWidget: (context, url, error) =>
+                                      _buildNoImagePlaceholder(),
+                                )
+                              : Image.asset(
+                                  imagePath,
+                                  width: 100,
+                                  height: 100,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      _buildNoImagePlaceholder(),
+                                ))
+                        : _buildNoImagePlaceholder(),
                   ),
                   Positioned(
                     bottom: 0,
@@ -419,6 +454,24 @@ class _MyProductScreenState extends State<MyProductScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildNoImagePlaceholder() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.image_not_supported_outlined,
+          size: 40,
+          color: Colors.grey.shade300,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          "No Image",
+          style: GoogleFonts.outfit(fontSize: 10, color: Colors.grey.shade400),
+        ),
+      ],
     );
   }
 }

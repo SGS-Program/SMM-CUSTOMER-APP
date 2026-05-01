@@ -21,11 +21,17 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _lt;
   String? _ln;
   String? _deviceId;
+  String _appSignature = "";
 
   @override
   void initState() {
     super.initState();
     _fetchDeviceInfo();
+    _fetchAppSignature();
+  }
+
+  Future<void> _fetchAppSignature() async {
+    _appSignature = await DeviceServices.getAppSignature();
   }
 
   Future<void> _fetchDeviceInfo() async {
@@ -56,19 +62,25 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       // Ensure Device Info is fetched if not already
-      if (_lt == null || _ln == null || _deviceId == null || _lt == '0.0' || _ln == '0.0') {
+      if (_lt == null || _ln == null || _deviceId == null) {
         final deviceData = await DeviceServices.getAndStoreDeviceInfo();
         _lt = deviceData['lt'];
         _ln = deviceData['ln'];
         _deviceId = deviceData['device_id'];
       }
 
-      final ln = _ln ?? '0.0';
-      final lt = _lt ?? '0.0';
-      final deviceId = _deviceId ?? '123';
+      if (_appSignature.isEmpty) {
+        _appSignature = await DeviceServices.getAppSignature();
+      }
 
-      if (ln == '0.0' || lt == '0.0') {
-        setState(() => _isLoading = false);
+      // Check for missing real data
+      if (_deviceId == null) {
+        _showError("Unable to retrieve Device ID. Please try again.");
+        return;
+      }
+
+      if (_lt == null || _ln == null) {
+        if (mounted) setState(() => _isLoading = false);
         if (mounted) {
           DeviceServices.showLocationRequiredPopup(context, onRetry: () {
             _fetchDeviceInfo();
@@ -77,10 +89,15 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
+      final String ln = _ln!;
+      final String lt = _lt!;
+      final String deviceId = _deviceId!;
+
       debugPrint("🔍 DEVICE INFO FOR LOGIN");
       debugPrint(" Device ID : $deviceId");
       debugPrint(" Latitude : $lt");
       debugPrint(" Longitude : $ln");
+      debugPrint(" App Signature : $_appSignature");
       debugPrint("========================================");
 
       final prefs = await SharedPreferences.getInstance();
@@ -95,6 +112,7 @@ class _LoginScreenState extends State<LoginScreen> {
               "lt": lt,
               "device_id": deviceId,
               "mobile": phone,
+              "app_siganture": _appSignature,
             },
           )
           .timeout(const Duration(seconds: 15));

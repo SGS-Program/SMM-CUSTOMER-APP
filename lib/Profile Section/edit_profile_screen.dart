@@ -233,6 +233,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     imagePath: _imageFile?.path,
                   );
 
+                  if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text("Profile updated successfully"),

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -35,10 +36,12 @@ class _DepotReportScreenState extends State<DepotReportScreen> {
       final cusId = prefs.getString('cus_id') ?? '';
 
       if (cid.isEmpty || cusId.isEmpty) {
-        setState(() {
-          _errorMessage = "Session expired. Please login again.";
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _errorMessage = "Session expired. Please login again.";
+            _isLoading = false;
+          });
+        }
         return;
       }
 
@@ -52,7 +55,9 @@ class _DepotReportScreenState extends State<DepotReportScreen> {
           'ln': '987',
           'cus_id': cusId,
         },
-      );
+      ).timeout(const Duration(seconds: 15));
+
+      if (!mounted) return;
 
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
@@ -303,13 +308,15 @@ class _DepotReportScreenState extends State<DepotReportScreen> {
               borderRadius: BorderRadius.circular(12),
               child: Center(
                 child: imageUrl.isNotEmpty
-                    ? Image.network(
-                        imageUrl,
+                    ? CachedNetworkImage(
+                        imageUrl: imageUrl,
                         width: 110,
                         height: 110,
                         fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) =>
-                            _placeholderIcon(),
+                        placeholder: (context, url) => const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                        errorWidget: (context, url, error) => _placeholderIcon(),
                       )
                     : _placeholderIcon(),
               ),

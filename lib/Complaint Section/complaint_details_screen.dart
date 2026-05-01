@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class ComplaintDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> complaint;
@@ -25,7 +26,7 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
     final photoUrl = widget.complaint['photo']?.toString();
     if (photoUrl != null && photoUrl.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        precacheImage(NetworkImage(photoUrl), context);
+        precacheImage(CachedNetworkImageProvider(photoUrl), context);
       });
     }
   }
@@ -47,6 +48,7 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
       final String? cusId = prefs.getString('cus_id');
 
       if (cid == null || cusId == null) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text("Missing user data. Please login again."),
@@ -83,7 +85,9 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
           'rating': _rating.toString(),
           'feedback': feedback.isEmpty ? 'No feedback provided' : feedback,
         },
-      );
+      ).timeout(const Duration(seconds: 15));
+
+      if (!mounted) return;
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -118,6 +122,7 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
         );
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("Error: ${e.toString()}"),
@@ -125,7 +130,9 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
         ),
       );
     } finally {
-      setState(() => _isSubmitting = false);
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
     }
   }
 
@@ -232,24 +239,24 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
                         ],
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        "VALID",
-                        style: GoogleFonts.outfit(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
+                    // Container(
+                    //   padding: const EdgeInsets.symmetric(
+                    //     horizontal: 12,
+                    //     vertical: 6,
+                    //   ),
+                    //   decoration: BoxDecoration(
+                    //     color: Colors.white.withOpacity(0.2),
+                    //     borderRadius: BorderRadius.circular(10),
+                    //   ),
+                    //   child: Text(
+                    //     "VALID",
+                    //     style: GoogleFonts.outfit(
+                    //       color: Colors.white,
+                    //       fontSize: 11,
+                    //       fontWeight: FontWeight.bold,
+                    //     ),
+                    //   ),
+                    // ),
                   ],
                 ),
               ),
@@ -530,18 +537,14 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
               child:
                   complaint['photo'] != null &&
                       complaint['photo'].toString().isNotEmpty
-                  ? Image.network(
-                      complaint['photo'],
+                  ? CachedNetworkImage(
+                      imageUrl: complaint['photo'],
                       width: 100,
                       height: 80,
                       fit: BoxFit.cover,
-                      cacheWidth: 200,
-                      cacheHeight: 160,
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return const _ShimmerBox(width: 100, height: 80);
-                      },
-                      errorBuilder: (context, error, stackTrace) =>
+                      placeholder: (context, url) =>
+                          const _ShimmerBox(width: 100, height: 80),
+                      errorWidget: (context, url, error) =>
                           _buildPlaceholderImage(),
                     )
                   : _buildPlaceholderImage(),
@@ -600,16 +603,13 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
               panEnabled: true,
               minScale: 0.5,
               maxScale: 4.0,
-              child: Image.network(
-                imageUrl,
+              child: CachedNetworkImage(
+                imageUrl: imageUrl,
                 fit: BoxFit.contain,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return const Center(
-                    child: CircularProgressIndicator(color: Colors.white),
-                  );
-                },
-                errorBuilder: (context, error, stackTrace) => const Center(
+                placeholder: (context, url) => const Center(
+                  child: CircularProgressIndicator(color: Colors.white),
+                ),
+                errorWidget: (context, url, error) => const Center(
                   child: Icon(
                     Icons.broken_image,
                     color: Colors.white,
@@ -956,8 +956,9 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
 
   Widget _buildTimelineSection(Map<String, dynamic> complaint) {
     final status = (complaint['status'] ?? '').toString().toLowerCase();
-    
-    bool isInProgress = status == "assigned" || status == "on the way" || status == "completed";
+
+    bool isInProgress =
+        status == "assigned" || status == "on the way" || status == "completed";
     bool isOnTheWay = status == "on the way" || status == "completed";
     bool isCompleted = status == "completed";
 
@@ -982,6 +983,8 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
             iconColor: Colors.green,
             isLast: false,
             isActive: true,
+            isLineActive: isInProgress,
+            index: 0,
           ),
           _buildTimelineItem(
             title: "In Progress",
@@ -991,24 +994,30 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
             iconColor: Colors.green,
             isLast: false,
             isActive: isInProgress,
+            isLineActive: isOnTheWay,
+            index: 1,
           ),
           _buildTimelineItem(
             title: "On the Way",
             subtitle: "Technician is on the way to your location",
-            icon: Icons.directions_bike,
+            icon: Icons.directions_bike_rounded,
             iconColor: Colors.green,
             isLast: false,
             isActive: isOnTheWay,
+            isLineActive: isCompleted,
+            index: 2,
           ),
-          _buildTimelineItem(
-            title: "Expected date",
-            subtitle:
-                "Technician to reach you\n${_formatDateTime(complaint['expected_date'])}",
-            icon: Icons.hourglass_empty,
-            iconColor: Colors.green,
-            isLast: false,
-            isActive: isCompleted,
-          ),
+          // _buildTimelineItem(
+          //   title: "Expected date",
+          //   subtitle:
+          //       "Technician to reach you\n${_formatDateTime(complaint['expected_date'])}",
+          //   icon: Icons.hourglass_empty,
+          //   iconColor: Colors.green,
+          //   isLast: false,
+          //   isActive: isCompleted,
+          //   isLineActive: isCompleted,
+          //   index: 3,
+          // ),
           _buildTimelineItem(
             title: "Resolved",
             subtitle:
@@ -1017,6 +1026,7 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
             iconColor: Colors.green,
             isLast: true,
             isActive: isCompleted,
+            index: 4,
           ),
         ],
       ),
@@ -1030,24 +1040,35 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
     required Color iconColor,
     required bool isLast,
     bool isActive = false,
+    bool? isLineActive,
+    int index = 0,
   }) {
+    bool lineActive = isLineActive ?? isActive;
+
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Column(
             children: [
-              Icon(
-                icon,
-                color: isActive ? iconColor : Colors.grey.shade300,
-                size: 24,
+              TweenAnimationBuilder<double>(
+                duration: const Duration(milliseconds: 600),
+                curve: Curves.easeOut,
+                tween: Tween(begin: 0.0, end: isActive ? 1.0 : 0.0),
+                builder: (context, value, child) {
+                  return Icon(
+                    icon,
+                    color: Color.lerp(Colors.grey.shade300, iconColor, value),
+                    size: 24,
+                  );
+                },
               ),
               if (!isLast)
                 Expanded(
-                  child: Container(
-                    width: 1,
-                    color: Colors.grey.shade300,
-                    margin: const EdgeInsets.symmetric(vertical: 4),
+                  child: _AnimatedTimelineLine(
+                    index: index,
+                    iconColor: iconColor,
+                    isActive: lineActive,
                   ),
                 ),
             ],
@@ -1055,7 +1076,7 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
           const SizedBox(width: 15),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.only(bottom: 20.0),
+              padding: const EdgeInsets.only(bottom: 40.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1197,6 +1218,60 @@ class _ShimmerBoxState extends State<_ShimmerBox>
           borderRadius: BorderRadius.circular(10),
         ),
       ),
+    );
+  }
+}
+
+class _AnimatedTimelineLine extends StatefulWidget {
+  final int index;
+  final Color iconColor;
+  final bool isActive;
+
+  const _AnimatedTimelineLine({
+    required this.index,
+    required this.iconColor,
+    required this.isActive,
+  });
+
+  @override
+  State<_AnimatedTimelineLine> createState() => _AnimatedTimelineLineState();
+}
+
+class _AnimatedTimelineLineState extends State<_AnimatedTimelineLine> {
+  bool _startAnimation = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.isActive) {
+      Future.delayed(Duration(milliseconds: 400 + (widget.index * 500)), () {
+        if (mounted) {
+          setState(() => _startAnimation = true);
+        }
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.easeInOut,
+      tween: Tween(begin: 0.0, end: _startAnimation ? 1.0 : 0.0),
+      builder: (context, value, child) {
+        return Container(
+          width: 2,
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [widget.iconColor, Colors.grey.shade200],
+              stops: [value, value],
+            ),
+          ),
+        );
+      },
     );
   }
 }

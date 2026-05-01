@@ -54,6 +54,7 @@ class _DepotDetailsScreenState extends State<DepotDetailsScreen> {
 
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
+        if (!mounted) return;
         if (jsonData['error'] == false &&
             jsonData['data'] != null &&
             (jsonData['data'] as List).isNotEmpty) {
@@ -68,12 +69,14 @@ class _DepotDetailsScreenState extends State<DepotDetailsScreen> {
           });
         }
       } else {
+        if (!mounted) return;
         setState(() {
           _errorMessage = 'Server error: ${response.statusCode}';
           _isLoading = false;
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = 'Failed to load data: $e';
         _isLoading = false;

@@ -116,6 +116,8 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
   String? _cusId;
 
   final TextEditingController _customerNameController = TextEditingController();
+  final TextEditingController _contactNumberController = TextEditingController();
+  final TextEditingController _alternateNumberController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
   bool _isSubmitting = false;
@@ -143,6 +145,7 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
       if (mounted) {
         setState(() {
           _customerNameController.text = name;
+          _contactNumberController.text = prefs.getString('mobile') ?? '';
         });
       }
     }
@@ -238,6 +241,8 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
     _audioPlayer.dispose();
     _timer?.cancel();
     _customerNameController.dispose();
+    _contactNumberController.dispose();
+    _alternateNumberController.dispose();
     _descriptionController.dispose();
     _addressController.dispose();
     super.dispose();
@@ -265,12 +270,12 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
     try {
       if (_playingPath == path) {
         await _audioPlayer.pause();
-        setState(() => _playingPath = null);
+        if (mounted) setState(() => _playingPath = null);
       } else {
         await _audioPlayer.play(DeviceFileSource(path));
-        setState(() => _playingPath = path);
+        if (mounted) setState(() => _playingPath = path);
 
-        _audioPlayer.onPlayerComplete.listen((event) {
+        _audioPlayer.onPlayerComplete.first.then((_) {
           if (mounted && _playingPath == path) {
             setState(() => _playingPath = null);
           }
@@ -301,9 +306,11 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
       },
     );
     if (picked != null && picked != _selectedDate) {
-      setState(() {
-        _selectedDate = picked;
-      });
+      if (mounted) {
+        setState(() {
+          _selectedDate = picked;
+        });
+      }
     }
   }
 
@@ -395,9 +402,11 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
           const config = RecordConfig();
           await _audioRecorder.start(config, path: path);
           _startTimer();
-          setState(() {
-            _isRecording = true;
-          });
+          if (mounted) {
+            setState(() {
+              _isRecording = true;
+            });
+          }
         }
       } else {
         await Permission.microphone.request();
@@ -408,16 +417,23 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
   }
 
   void _deleteRecording(int index) {
+    if (index < 0 || index >= _audioPaths.length) return;
     final path = _audioPaths[index];
-    final file = File(path);
-    if (file.existsSync()) file.deleteSync();
-    setState(() {
-      if (_playingPath == path) {
-        _audioPlayer.stop();
-        _playingPath = null;
-      }
-      _audioPaths.removeAt(index);
-    });
+    try {
+      final file = File(path);
+      if (file.existsSync()) file.deleteSync();
+    } catch (e) {
+      debugPrint("Error deleting file: $e");
+    }
+    if (mounted) {
+      setState(() {
+        if (_playingPath == path) {
+          _audioPlayer.stop();
+          _playingPath = null;
+        }
+        _audioPaths.removeAt(index);
+      });
+    }
   }
 
   // SUBMIT COMPLAINT
@@ -436,6 +452,26 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
         _descriptionController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please fill in all required fields")),
+      );
+      return;
+    }
+
+    final altNum = _alternateNumberController.text.trim();
+    if (altNum.isNotEmpty && altNum.length != 10) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Alternate Number must be exactly 10 digits"),
+        ),
+      );
+      return;
+    }
+
+    final contactNum = _contactNumberController.text.trim();
+    if (contactNum.isNotEmpty && contactNum.length != 10) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Contact Number must be exactly 10 digits"),
+        ),
       );
       return;
     }
@@ -476,6 +512,8 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
       request.fields['complaint_desc'] = _descriptionController.text.trim();
       request.fields['address'] = _addressController.text.trim();
       request.fields['current_location'] = _currentAddress ?? '';
+      request.fields['pho'] = _contactNumberController.text.trim();
+      request.fields['a_pho'] = _alternateNumberController.text.trim();
       request.fields['priority'] = '2';
 
       request.fields['visit_date'] = _selectedDate != null
@@ -505,7 +543,9 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
         "IMAGES: ${_pickedFiles.length} | AUDIO: ${_audioPaths.length}",
       );
 
-      var streamedResponse = await request.send();
+      var streamedResponse = await request.send().timeout(
+        const Duration(seconds: 30),
+      );
       var response = await http.Response.fromStream(streamedResponse);
 
       debugPrint("SUBMIT STATUS: ${response.statusCode}");
@@ -541,6 +581,7 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
     setState(() {
       _descriptionController.clear();
       _addressController.clear();
+      _alternateNumberController.clear();
       _selectedProductId = null;
       _selectedProductName = null;
       _selectedComplaintTitleId = null;
@@ -731,10 +772,13 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
                                   )
                                 : null,
                             onTap: () {
-                              setState(() {
-                                _selectedProductId = product['id'].toString();
-                                _selectedProductName = product['product_name'];
-                              });
+                              if (mounted) {
+                                setState(() {
+                                  _selectedProductId = product['id'].toString();
+                                  _selectedProductName =
+                                      product['product_name'];
+                                });
+                              }
                               Navigator.pop(context);
                             },
                           );
@@ -754,7 +798,7 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        setState(() => _isFetchingLocation = false);
+        if (mounted) setState(() => _isFetchingLocation = false);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -805,7 +849,7 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
       }
 
       if (position == null) {
-        if (_cityName == null) setState(() => _isFetchingLocation = false);
+        if (mounted) setState(() => _isFetchingLocation = false);
         return;
       }
 
@@ -903,6 +947,24 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
             _buildTextField(
               "Enter Customer Name",
               controller: _customerNameController,
+            ),
+            const SizedBox(height: 15),
+
+            _buildFieldLabel("Contact Number"),
+            _buildTextField(
+              "Enter Contact Number",
+              controller: _contactNumberController,
+              keyboardType: TextInputType.phone,
+              maxLength: 10,
+            ),
+            const SizedBox(height: 15),
+
+            _buildFieldLabel("Alternate Number"),
+            _buildTextField(
+              "Enter Alternate Number",
+              controller: _alternateNumberController,
+              keyboardType: TextInputType.phone,
+              maxLength: 10,
             ),
             const SizedBox(height: 15),
 
@@ -1005,6 +1067,8 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
     String hint, {
     int maxLines = 1,
     TextEditingController? controller,
+    TextInputType keyboardType = TextInputType.text,
+    int? maxLength,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -1014,9 +1078,12 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
       child: TextField(
         controller: controller,
         maxLines: maxLines,
+        keyboardType: keyboardType,
+        maxLength: maxLength,
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: GoogleFonts.outfit(color: Colors.grey.shade400),
+          counterText: "",
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 15,
             vertical: 12,

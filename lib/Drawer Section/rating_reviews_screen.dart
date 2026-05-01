@@ -39,7 +39,9 @@ class _RatingReviewsScreenState extends State<RatingReviewsScreen> {
           "ln": "987",
           "cus_id": cusId,
         },
-      );
+      ).timeout(const Duration(seconds: 15));
+
+      if (!mounted) return;
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -54,11 +56,9 @@ class _RatingReviewsScreenState extends State<RatingReviewsScreen> {
           setState(() {
             _isLoading = false;
           });
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(data['message'] ?? "Error fetching reviews")),
-            );
-          }
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(data['message'] ?? "Error fetching reviews")),
+          );
         }
       } else {
         setState(() {

@@ -1,13 +1,61 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class WarrantyDetailsScreen extends StatelessWidget {
-  const WarrantyDetailsScreen({super.key});
+  final dynamic warrantyData;
+  const WarrantyDetailsScreen({super.key, this.warrantyData});
+
+  Future<void> _launchURL(BuildContext context, String url) async {
+    final Uri uri = Uri.parse(url);
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Could not launch PDF viewer.")),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: $e")),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final double screenWidth = MediaQuery.of(context).size.width;
     final bool isSmallScreen = screenWidth < 600;
+
+    final productItems = warrantyData?['items'] as List?;
+    final firstItem = (productItems != null && productItems.isNotEmpty) ? productItems[0] : null;
+    final String productName = firstItem?['pname'] ?? "N/A";
+    final String invoiceNo = warrantyData?['invoice_no'] ?? "N/A";
+    final String status = warrantyData?['warranty_status'] ?? "N/A";
+    final String daysRemainingStr = warrantyData?['days_remaining'] ?? "0 days remaining";
+    final String startDate = warrantyData?['date'] ?? "N/A";
+    final String endDate = warrantyData?['warranty_expiry'] ?? "N/A";
+    final String pdfUrl = warrantyData?['pdf_url'] ?? "";
+
+    // Parse days remaining for calculation
+    int daysRemaining = 0;
+    try {
+      daysRemaining = int.parse(daysRemainingStr.split(' ')[0]);
+    } catch (e) {
+      daysRemaining = 0;
+    }
+
+    // Assuming a standard 12-month (365 days) warranty for progress bar
+    int totalDays = 365; 
+    int monthsRemaining = (daysRemaining / 30).ceil();
+    int monthsCompleted = ((totalDays - daysRemaining) / 30).floor();
+    if (monthsCompleted < 0) monthsCompleted = 0;
+    if (monthsRemaining > 12) monthsRemaining = 12;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -33,27 +81,36 @@ class WarrantyDetailsScreen extends StatelessWidget {
         child: Column(
           children: [
             // Top Dark Card
-            _buildTopDarkCard(),
+            _buildTopDarkCard(productName, invoiceNo, status, daysRemainingStr, startDate, endDate),
 
             // Progress Indicators
-            _buildWarrantyTimeline(),
+            _buildWarrantyTimeline(monthsRemaining, monthsCompleted),
 
             // Coverage Details Card
             _buildCoverageDetails(),
 
             // Expired Secondary Card
-            _buildExpiredCard(),
+            if (status.toLowerCase() == "expired")
+              _buildExpiredCard(productName, endDate),
 
             const SizedBox(height: 20),
-            
-            // Download Button
+
+            // View Warranty Button
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               child: SizedBox(
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    if (pdfUrl.isNotEmpty) {
+                      _launchURL(context, pdfUrl);
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("No Warranty PDF available.")),
+                      );
+                    }
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF2CB9E5),
                     shape: RoundedRectangleBorder(
@@ -62,7 +119,7 @@ class WarrantyDetailsScreen extends StatelessWidget {
                     elevation: 0,
                   ),
                   child: Text(
-                    "Download Warranty",
+                    "View Warranty",
                     style: GoogleFonts.outfit(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -79,7 +136,8 @@ class WarrantyDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTopDarkCard() {
+  Widget _buildTopDarkCard(String name, String invoice, String status, String remaining, String start, String end) {
+    bool isActive = status.toLowerCase() == "active";
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(20),
@@ -95,24 +153,34 @@ class WarrantyDetailsScreen extends StatelessWidget {
             children: [
               Text(
                 "Machine",
-                style: GoogleFonts.outfit(color: Colors.grey.shade400, fontSize: 14),
+                style: GoogleFonts.outfit(
+                  color: Colors.grey.shade400,
+                  fontSize: 14,
+                ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
-                  color: Colors.green,
+                  color: isActive ? Colors.green : Colors.red,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  "Active",
-                  style: GoogleFonts.outfit(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                  status,
+                  style: GoogleFonts.outfit(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 4),
           Text(
-            "Jaw Crusher - JC 500",
+            name,
             style: GoogleFonts.outfit(
               color: Colors.white,
               fontSize: 22,
@@ -120,15 +188,18 @@ class WarrantyDetailsScreen extends StatelessWidget {
             ),
           ),
           Text(
-            "Expires In 284 Days",
-            style: GoogleFonts.outfit(color: Colors.grey.shade400, fontSize: 14),
+            isActive ? remaining : "Expired",
+            style: GoogleFonts.outfit(
+              color: Colors.grey.shade400,
+              fontSize: 14,
+            ),
           ),
           const SizedBox(height: 25),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildDateInfo("Start Date", "01 JAN 2025"),
-              _buildDateInfo("End Date", "31 DEC 2026", alignRight: true),
+              _buildDateInfo("Start Date", start),
+              _buildDateInfo("End Date", end, alignRight: true),
             ],
           ),
         ],
@@ -138,7 +209,9 @@ class WarrantyDetailsScreen extends StatelessWidget {
 
   Widget _buildDateInfo(String label, String date, {bool alignRight = false}) {
     return Column(
-      crossAxisAlignment: alignRight ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      crossAxisAlignment: alignRight
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
       children: [
         Text(
           label,
@@ -148,7 +221,7 @@ class WarrantyDetailsScreen extends StatelessWidget {
           date,
           style: GoogleFonts.outfit(
             color: Colors.white,
-            fontSize: 20,
+            fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -156,51 +229,73 @@ class WarrantyDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildWarrantyTimeline() {
+  Widget _buildWarrantyTimeline(int monthsRemaining, int monthsCompleted) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
       child: Column(
         children: [
           Row(
             children: [
-              const Icon(Icons.check_circle, color: Color(0xFF4CAF50), size: 28),
-              Expanded(
-                child: Container(height: 4, color: const Color(0xFF4CAF50)),
+              Icon(
+                Icons.check_circle,
+                color: monthsCompleted > 0 ? const Color(0xFF4CAF50) : Colors.grey,
+                size: 28,
               ),
-              const Icon(Icons.access_time_filled, color: Color(0xFF4CAF50), size: 40),
+              Expanded(
+                child: Container(
+                  height: 4, 
+                  color: monthsCompleted > 6 ? const Color(0xFF4CAF50) : const Color(0xFF2CB9E5)
+                ),
+              ),
+              Icon(
+                Icons.access_time_filled,
+                color: monthsRemaining > 0 ? const Color(0xFF4CAF50) : Colors.grey,
+                size: 40,
+              ),
               Expanded(
                 child: Container(height: 4, color: const Color(0xFF2CB9E5)),
               ),
-              const Icon(Icons.calendar_month, color: Color(0xFF2CB9E5), size: 28),
+              const Icon(
+                Icons.calendar_month,
+                color: Color(0xFF2CB9E5),
+                size: 28,
+              ),
             ],
           ),
           const SizedBox(height: 15),
           Text(
-            "In Warranty",
+            monthsRemaining > 0 ? "In Warranty" : "Warranty Expired",
             style: GoogleFonts.outfit(
               fontSize: 24,
               fontWeight: FontWeight.bold,
               color: Colors.black,
             ),
           ),
-          Text(
-            "6 Months More to Complete",
-            style: GoogleFonts.outfit(
-              fontSize: 16,
-              color: Colors.grey.shade600,
+          if (monthsRemaining > 0)
+            Text(
+              "$monthsRemaining Months More to Complete",
+              style: GoogleFonts.outfit(
+                fontSize: 16,
+                color: Colors.grey.shade600,
+              ),
             ),
-          ),
           const SizedBox(height: 15),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                "6 Months Completed",
-                style: GoogleFonts.outfit(color: Colors.green, fontWeight: FontWeight.bold),
+                "$monthsCompleted Months Completed",
+                style: GoogleFonts.outfit(
+                  color: Colors.green,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               Text(
-                "6 Months Remaining",
-                style: GoogleFonts.outfit(color: const Color(0xFF2CB9E5), fontWeight: FontWeight.bold),
+                "$monthsRemaining Months Remaining",
+                style: GoogleFonts.outfit(
+                  color: const Color(0xFF2CB9E5),
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),
@@ -208,32 +303,36 @@ class WarrantyDetailsScreen extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                flex: 4,
-                child: Container(
-                  height: 12,
-                  decoration: const BoxDecoration(
-                    color: Colors.green,
-                    borderRadius: BorderRadius.only(topLeft: Radius.circular(6), bottomLeft: Radius.circular(6)),
-                  ),
-                ),
-              ),
-              Expanded(
-                flex: 3,
-                child: Container(
-                  height: 12,
-                  color: const Color(0xFF2CB9E5),
-                ),
-              ),
-              Expanded(
-                flex: 3,
+                flex: monthsCompleted,
                 child: Container(
                   height: 12,
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
-                    borderRadius: const BorderRadius.only(topRight: Radius.circular(6), bottomRight: Radius.circular(6)),
+                    color: Colors.green,
+                    borderRadius: BorderRadius.only(
+                      topLeft: const Radius.circular(6),
+                      bottomLeft: const Radius.circular(6),
+                      topRight: monthsRemaining == 0 ? const Radius.circular(6) : Radius.zero,
+                      bottomRight: monthsRemaining == 0 ? const Radius.circular(6) : Radius.zero,
+                    ),
                   ),
                 ),
               ),
+              if (monthsRemaining > 0)
+                Expanded(
+                  flex: monthsRemaining,
+                  child: Container(
+                    height: 12, 
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2CB9E5),
+                      borderRadius: BorderRadius.only(
+                        topRight: const Radius.circular(6),
+                        bottomRight: const Radius.circular(6),
+                        topLeft: monthsCompleted == 0 ? const Radius.circular(6) : Radius.zero,
+                        bottomLeft: monthsCompleted == 0 ? const Radius.circular(6) : Radius.zero,
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ],
@@ -261,21 +360,48 @@ class WarrantyDetailsScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 15),
-          _buildCoverageItem(Icons.check, Colors.green, "Mechanical Parts (excl. wear parts)"),
+          _buildCoverageItem(
+            Icons.check,
+            Colors.green,
+            "Mechanical Parts (excl. wear parts)",
+          ),
           const Divider(),
-          _buildCoverageItem(Icons.check, Colors.green, "Labour & Technician Visit"),
+          _buildCoverageItem(
+            Icons.check,
+            Colors.green,
+            "Labour & Technician Visit",
+          ),
           const Divider(),
-          _buildCoverageItem(Icons.check, Colors.green, "Electrical Components (motor)"),
+          _buildCoverageItem(
+            Icons.check,
+            Colors.green,
+            "Electrical Components (motor)",
+          ),
           const Divider(),
-          _buildCoverageItem(Icons.close, Colors.red, "Wear Parts (jaws, Liners)", isExcluded: true),
+          _buildCoverageItem(
+            Icons.close,
+            Colors.red,
+            "Wear Parts (jaws, Liners)",
+            isExcluded: true,
+          ),
           const Divider(),
-          _buildCoverageItem(Icons.close, Colors.red, "Accidental Damage", isExcluded: true),
+          _buildCoverageItem(
+            Icons.close,
+            Colors.red,
+            "Accidental Damage",
+            isExcluded: true,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildCoverageItem(IconData icon, Color color, String title, {bool isExcluded = false}) {
+  Widget _buildCoverageItem(
+    IconData icon,
+    Color color,
+    String title, {
+    bool isExcluded = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -304,7 +430,7 @@ class WarrantyDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildExpiredCard() {
+  Widget _buildExpiredCard(String name, String endDate) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       padding: const EdgeInsets.all(16),
@@ -317,17 +443,23 @@ class WarrantyDetailsScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            "Cone Crusher . CC-200",
-            style: GoogleFonts.outfit(color: const Color(0xFF2CB9E5), fontSize: 13),
+            name,
+            style: GoogleFonts.outfit(
+              color: const Color(0xFF2CB9E5),
+              fontSize: 13,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             "Warranty Expired",
-            style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16),
+            style: GoogleFonts.outfit(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
-            "Expired 15 Mar 2025",
+            "Expired $endDate",
             style: GoogleFonts.outfit(color: Colors.red, fontSize: 13),
           ),
         ],

@@ -48,9 +48,13 @@ dependencies:
   geocoding: ^3.0.0
   audioplayers: ^6.6.0
   device_info_plus: ^12.4.0
+  sms_autofill: ^2.4.0
   firebase_core: ^4.7.0
   firebase_messaging: ^16.2.0
   flutter_local_notifications: ^21.0.0
+  flutter_animate: ^4.5.2
+  cached_network_image: ^3.4.1
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:

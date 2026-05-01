@@ -99,9 +99,7 @@ class _MyAppState extends State<MyApp> {
       if (token != null) {
         print("🔥 FCM TOKEN: $token");
       } else {
-        print(
-          "⚠️ FCM TOKEN is null. Check",
-        );
+        print("⚠️ FCM TOKEN is null. Check");
       }
     } catch (e) {
       print("❌ Error fetching FCM Token: $e");

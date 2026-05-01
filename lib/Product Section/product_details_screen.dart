@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class ProductDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> product;
@@ -43,22 +44,30 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Product Image
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(15),
-                child: Image.asset(
-                  "assets/breaker.png",
-                  width: double.infinity,
-                  height: 220,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    height: 220,
-                    color: Colors.grey.shade200,
-                    child: const Icon(Icons.image, size: 80, color: Colors.grey),
-                  ),
-                ),
+                child:
+                    (widget.product['pimage'] != null &&
+                        widget.product['pimage'].toString().isNotEmpty)
+                    ? CachedNetworkImage(
+                        imageUrl: widget.product['pimage'],
+                        width: double.infinity,
+                        height: 220,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Container(
+                          height: 220,
+                          width: double.infinity,
+                          color: Colors.grey.shade100,
+                          child: const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        ),
+                        errorWidget: (context, url, error) =>
+                            _buildNoImagePlaceholder(),
+                      )
+                    : _buildNoImagePlaceholder(),
               ),
             ),
 
@@ -69,10 +78,16 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
               const Divider(),
               _buildInfoRow("Order ID", widget.product['order_id'] ?? 'N/A'),
               const Divider(),
-              _buildInfoRow("Units", "${widget.product['qty'] ?? '0'} Units",
-                  valueColor: const Color(0xFF4CAF50)),
+              _buildInfoRow(
+                "Units",
+                "${widget.product['qty'] ?? '0'} Units",
+                valueColor: const Color(0xFF4CAF50),
+              ),
               const Divider(),
-              _buildInfoRow("Date of purchased", widget.product['date'] ?? 'N/A'),
+              _buildInfoRow(
+                "Date of purchased",
+                widget.product['date'] ?? 'N/A',
+              ),
             ]),
 
             // Service Schedule Section
@@ -80,7 +95,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             _buildServiceCard(),
 
             // View Invoice Button & Dropdown
-            _buildInvoiceSection(),
+            // _buildInvoiceSection(),
 
             // Location Section
             _buildSectionHeader("Location"),
@@ -93,18 +108,31 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
               const Divider(),
               _buildInfoRow("Capacity", "50 TPH"),
               const Divider(),
-              _buildInfoRow("Power", "75 HP", valueColor: const Color(0xFF4CAF50)),
+              _buildInfoRow(
+                "Power",
+                "75 HP",
+                valueColor: const Color(0xFF4CAF50),
+              ),
               const Divider(),
               _buildInfoRow("Weight", "12 Tons"),
             ]),
 
             // Attachments Section
-            _buildSectionHeader("Attachments"),
-            _buildAttachmentItem("Invoice PDF", "INV-${widget.product['order_id'] ?? 'N/A'}"),
-            _buildAttachmentItem("Warranty Card", "wc-${widget.product['order_id'] ?? 'N/A'}"),
-            _buildAttachmentItem("Service report", "SR-${widget.product['order_id'] ?? 'N/A'}"),
-            
-            const SizedBox(height: 30),
+            // _buildSectionHeader("Attachments"),
+            // _buildAttachmentItem(
+            //   "Invoice PDF",
+            //   "INV-${widget.product['order_id'] ?? 'N/A'}",
+            // ),
+            // _buildAttachmentItem(
+            //   "Warranty Card",
+            //   "wc-${widget.product['order_id'] ?? 'N/A'}",
+            // ),
+            // _buildAttachmentItem(
+            //   "Service report",
+            //   "SR-${widget.product['order_id'] ?? 'N/A'}",
+            // ),
+
+            // const SizedBox(height: 30),
           ],
         ),
       ),
@@ -142,7 +170,9 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                   ),
                   const Spacer(),
                   Icon(
-                    _isInvoiceExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                    _isInvoiceExpanded
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
                     color: Colors.black87,
                   ),
                 ],
@@ -192,7 +222,11 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             ),
           ),
           // Items
-          _buildInvoiceDetailRow(widget.product['pname'] ?? 'Product', value: "₹ --", qty: "Qty(${widget.product['qty'] ?? '1'})"),
+          _buildInvoiceDetailRow(
+            widget.product['pname'] ?? 'Product',
+            value: "₹ --",
+            qty: "Qty(${widget.product['qty'] ?? '1'})",
+          ),
           _buildInvoiceDetailRow("Service", value: "₹ --"),
           // Total Row
           Container(
@@ -261,7 +295,11 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     );
   }
 
-  Widget _buildInvoiceDetailRow(String label, {required String value, String? qty}) {
+  Widget _buildInvoiceDetailRow(
+    String label, {
+    required String value,
+    String? qty,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       color: Colors.grey.shade100,
@@ -278,14 +316,21 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
               child: Text(
                 qty,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.outfit(color: Colors.grey.shade600, fontSize: 14),
+                style: GoogleFonts.outfit(
+                  color: Colors.grey.shade600,
+                  fontSize: 14,
+                ),
               ),
             ),
           Expanded(
             child: Text(
               value,
               textAlign: TextAlign.right,
-              style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87),
+              style: GoogleFonts.outfit(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                color: Colors.black87,
+              ),
             ),
           ),
         ],
@@ -301,11 +346,18 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         children: [
           Text(
             label,
-            style: GoogleFonts.outfit(color: Colors.grey.shade600, fontSize: 14),
+            style: GoogleFonts.outfit(
+              color: Colors.grey.shade600,
+              fontSize: 14,
+            ),
           ),
           Text(
             value,
-            style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87),
+            style: GoogleFonts.outfit(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              color: Colors.black87,
+            ),
           ),
         ],
       ),
@@ -347,17 +399,22 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         color: const Color(0xFFF8F9FB),
         borderRadius: BorderRadius.circular(15),
       ),
-      child: Column(
-        children: children,
-      ),
+      child: Column(children: children),
     );
   }
 
-  Widget _buildInfoRow(String label, String value, {Color? valueColor, bool isMultiLine = false}) {
+  Widget _buildInfoRow(
+    String label,
+    String value, {
+    Color? valueColor,
+    bool isMultiLine = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
-        crossAxisAlignment: isMultiLine ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+        crossAxisAlignment: isMultiLine
+            ? CrossAxisAlignment.start
+            : CrossAxisAlignment.center,
         children: [
           Expanded(
             flex: 2,
@@ -440,10 +497,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
       children: [
         Container(
           padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: iconBgColor,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: iconBgColor, shape: BoxShape.circle),
           child: Icon(icon, color: iconColor, size: 20),
         ),
         const SizedBox(width: 12),
@@ -496,7 +550,11 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
               color: Colors.white,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.business_outlined, color: Color(0xFF283E51), size: 35),
+            child: const Icon(
+              Icons.business_outlined,
+              color: Color(0xFF283E51),
+              size: 35,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -543,7 +601,10 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
               color: const Color(0xFFE3F2FD),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.description_outlined, color: Color(0xFF2196F3)),
+            child: const Icon(
+              Icons.description_outlined,
+              color: Color(0xFF2196F3),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -568,6 +629,32 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             ),
           ),
           Icon(Icons.download_rounded, color: Colors.grey.shade400),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoImagePlaceholder() {
+    return Container(
+      height: 220,
+      width: double.infinity,
+      color: Colors.grey.shade100,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.image_not_supported_outlined,
+            size: 50,
+            color: Colors.grey.shade400,
+          ),
+          const SizedBox(height: 10),
+          Text(
+            "No Image available",
+            style: GoogleFonts.outfit(
+              color: Colors.grey.shade500,
+              fontSize: 14,
+            ),
+          ),
         ],
       ),
     );

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class DispatchmentDetailsScreen extends StatefulWidget {
   final int dispatchId;
@@ -34,10 +35,12 @@ class _DispatchmentDetailsScreenState extends State<DispatchmentDetailsScreen> {
       final cusId = prefs.getString('cus_id') ?? '';
 
       if (cid.isEmpty || cusId.isEmpty) {
-        setState(() {
-          _errorMessage = "Session expired. Please login again.";
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _errorMessage = "Session expired. Please login again.";
+            _isLoading = false;
+          });
+        }
         return;
       }
 
@@ -52,7 +55,9 @@ class _DispatchmentDetailsScreenState extends State<DispatchmentDetailsScreen> {
           'ln': '987',
           'cus_id': cusId,
         },
-      );
+      ).timeout(const Duration(seconds: 15));
+
+      if (!mounted) return;
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body);
@@ -81,14 +86,16 @@ class _DispatchmentDetailsScreenState extends State<DispatchmentDetailsScreen> {
         });
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Error: $e';
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Error: $e';
+          _isLoading = false;
+        });
+      }
     }
   }
 
-  // ─── HELPERS ──────────────────────────────────────────────────────────────
+  // ─── HELPERS
 
   String _formatDate(String? raw) {
     if (raw == null || raw.isEmpty || raw.startsWith('0000')) return 'N/A';
@@ -241,7 +248,7 @@ class _DispatchmentDetailsScreenState extends State<DispatchmentDetailsScreen> {
                   _buildLogisticCard(),
 
                   // View Invoice Button & Dropdown
-                  _buildInvoiceSection(),
+                  // _buildInvoiceSection(),
 
                   // Timeline status Section
                   _buildSectionHeader("Timeline status"),
@@ -263,11 +270,13 @@ class _DispatchmentDetailsScreenState extends State<DispatchmentDetailsScreen> {
       child: ElevatedButton(
         onPressed: () {
           // Add functionality here
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Product Received marked successfully!"),
-            ),
-          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Product Received marked successfully!"),
+              ),
+            );
+          }
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF2CB9E5),
@@ -297,24 +306,21 @@ class _DispatchmentDetailsScreenState extends State<DispatchmentDetailsScreen> {
           ClipRRect(
             borderRadius: BorderRadius.circular(15),
             child: imageUrl != null && imageUrl.toString().isNotEmpty
-                ? Image.network(
-                    imageUrl.toString(),
+                ? CachedNetworkImage(
+                    imageUrl: imageUrl.toString(),
                     width: double.infinity,
                     height: 220,
                     fit: BoxFit.cover,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Container(
-                        height: 220,
-                        color: Colors.grey.shade200,
-                        child: const Center(
-                          child: CircularProgressIndicator(
-                            color: Color(0xFF2CB9E5),
-                          ),
+                    placeholder: (context, url) => Container(
+                      height: 220,
+                      color: Colors.grey.shade200,
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF2CB9E5),
                         ),
-                      );
-                    },
-                    errorBuilder: (context, error, stackTrace) =>
+                      ),
+                    ),
+                    errorWidget: (context, url, error) =>
                         _buildNoImagePlaceholder(),
                   )
                 : _buildNoImagePlaceholder(),
@@ -438,7 +444,11 @@ class _DispatchmentDetailsScreenState extends State<DispatchmentDetailsScreen> {
       children: [
         Text(
           label,
-          style: GoogleFonts.outfit(color: Colors.grey.shade600, fontSize: 15),
+          style: GoogleFonts.outfit(
+            color: Colors.grey.shade600,
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
+          ),
         ),
         Text(
           value,
@@ -734,11 +744,15 @@ class _DispatchmentDetailsScreenState extends State<DispatchmentDetailsScreen> {
 
   Widget _buildTimelineStatus() {
     final expDelivery = _dispatchData?['exp_delivery']?.toString();
-    final disTime = (_dispatchData?['dtime'] ?? _dispatchData?['dis_time'])?.toString();
+    final disTime = (_dispatchData?['dtime'] ?? _dispatchData?['dis_time'])
+        ?.toString();
     final deliAddr = _dispatchData?['deli_addrs']?.toString() ?? 'N/A';
 
     final expDeliveryFormatted = _formatDate(expDelivery);
     final disTimeFormatted = _formatDate(disTime);
+
+    final bool hasExpDate = expDeliveryFormatted != 'N/A';
+    final bool hasDispatched = disTimeFormatted != 'N/A';
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
@@ -746,21 +760,22 @@ class _DispatchmentDetailsScreenState extends State<DispatchmentDetailsScreen> {
         children: [
           _buildTimelineItem(
             icon: Icons.access_time_outlined,
-            iconColor: Colors.grey,
+            iconColor: hasExpDate ? Colors.green : Colors.grey,
             title: "Expected date",
             subtitle: "delivery agent will reach you\n$expDeliveryFormatted",
             isLast: false,
             isCurrent: false,
-            titleColor: Colors.grey,
+            titleColor: hasExpDate ? Colors.black : Colors.grey,
+            lineColor: hasDispatched ? Colors.green : Colors.grey.shade300,
           ),
           _buildTimelineItem(
             icon: Icons.local_shipping_outlined,
-            iconColor: Colors.grey,
+            iconColor: hasDispatched ? Colors.green : Colors.grey,
             title: "Dispatched",
             subtitle: "$deliAddr\n$disTimeFormatted",
             isLast: true,
             isCurrent: false,
-            titleColor: Colors.grey,
+            titleColor: hasDispatched ? Colors.black : Colors.grey,
           ),
         ],
       ),
@@ -775,6 +790,7 @@ class _DispatchmentDetailsScreenState extends State<DispatchmentDetailsScreen> {
     bool isLast = false,
     bool isCurrent = true,
     Color? titleColor,
+    Color? lineColor,
   }) {
     return IntrinsicHeight(
       child: Row(
@@ -785,7 +801,10 @@ class _DispatchmentDetailsScreenState extends State<DispatchmentDetailsScreen> {
               Icon(icon, color: iconColor, size: 28),
               if (!isLast)
                 Expanded(
-                  child: Container(width: 2, color: Colors.grey.shade300),
+                  child: Container(
+                    width: 2,
+                    color: lineColor ?? Colors.grey.shade300,
+                  ),
                 ),
             ],
           ),
@@ -808,8 +827,9 @@ class _DispatchmentDetailsScreenState extends State<DispatchmentDetailsScreen> {
                   Text(
                     subtitle,
                     style: GoogleFonts.outfit(
-                      color: Colors.grey.shade500,
-                      fontSize: 13,
+                      color: Colors.grey.shade600,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],

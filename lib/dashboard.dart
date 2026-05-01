@@ -63,7 +63,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'ln': ln,
           'cus_id': cusId,
         },
-      );
+      ).timeout(const Duration(seconds: 15));
+
+      if (!mounted) return;
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -77,13 +79,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
             isLoading = false;
           });
         } else {
-          setState(() => isLoading = false);
+          if (mounted) setState(() => isLoading = false);
         }
       } else {
-        setState(() => isLoading = false);
+        if (mounted) setState(() => isLoading = false);
       }
     } catch (e) {
-      setState(() => isLoading = false);
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
