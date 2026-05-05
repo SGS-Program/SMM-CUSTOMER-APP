@@ -24,53 +24,54 @@ class RaiseComplaintScreen extends StatefulWidget {
   static bool hasLoadedOnce = false;
 
   static Future<void> fetchInitialData() async {
+    if (cachedProducts.isNotEmpty && cachedComplaintTitles.isNotEmpty) {
+      hasLoadedOnce = true;
+      return;
+    }
     try {
       final prefs = await SharedPreferences.getInstance();
       final String cid = prefs.getString('cid') ?? '';
       if (cid.isEmpty) return;
 
       final String token = prefs.getString('token') ?? '';
-      final String deviceId = prefs.getString('device_id') ?? '123';
-      final String lt = prefs.getString('lt') ?? '0.0';
-      final String ln = prefs.getString('ln') ?? '0.0';
+      final String deviceId = prefs.getString('device_id') ?? '';
+      final String lt = prefs.getString('lt') ?? '';
+      final String ln = prefs.getString('ln') ?? '';
 
-      final pResp = await http
-          .post(
-            Uri.parse("https://erpsmart.in/total/api/m_api/"),
-            body: {
-              "type": "7000",
-              "cid": cid,
-              "token": token,
-              "device_id": deviceId,
-              "lt": lt,
-              "ln": ln,
-            },
-          )
-          .timeout(const Duration(seconds: 10));
+      final results = await Future.wait([
+        http.post(
+          Uri.parse("https://erpsmart.in/total/api/m_api/"),
+          body: {
+            "type": "7000",
+            "cid": cid,
+            "token": token,
+            "device_id": deviceId,
+            "lt": lt,
+            "ln": ln,
+          },
+        ).timeout(const Duration(seconds: 10)),
+        http.post(
+          Uri.parse("https://erpsmart.in/total/api/m_api/"),
+          body: {
+            "type": "7002",
+            "cid": cid,
+            "token": token,
+            "device_id": deviceId,
+            "lt": lt,
+            "ln": ln,
+          },
+        ).timeout(const Duration(seconds: 10)),
+      ]);
 
-      if (pResp.statusCode == 200) {
-        final data = json.decode(pResp.body);
+      if (results[0].statusCode == 200) {
+        final data = json.decode(results[0].body);
         if (data['error'] == false) {
           cachedProducts = data['data'] ?? [];
         }
       }
 
-      final tResp = await http
-          .post(
-            Uri.parse("https://erpsmart.in/total/api/m_api/"),
-            body: {
-              "type": "7002",
-              "cid": cid,
-              "token": token,
-              "device_id": deviceId,
-              "lt": lt,
-              "ln": ln,
-            },
-          )
-          .timeout(const Duration(seconds: 10));
-
-      if (tResp.statusCode == 200) {
-        final data = json.decode(tResp.body);
+      if (results[1].statusCode == 200) {
+        final data = json.decode(results[1].body);
         if (data['error'] == false) {
           cachedComplaintTitles = data['data'] ?? [];
         }
@@ -155,9 +156,9 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final String cid = prefs.getString('cid') ?? '';
-      final String deviceId = prefs.getString('device_id') ?? '123';
-      final String lt = prefs.getString('lt') ?? '123';
-      final String ln = prefs.getString('ln') ?? '987';
+      final String deviceId = prefs.getString('device_id') ?? '';
+      final String lt = prefs.getString('lt') ?? '';
+      final String ln = prefs.getString('ln') ?? '';
 
       final response = await http
           .post(
@@ -197,9 +198,9 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final String cid = prefs.getString('cid') ?? '';
-      final String deviceId = prefs.getString('device_id') ?? '123';
-      final String lt = prefs.getString('lt') ?? '123';
-      final String ln = prefs.getString('ln') ?? '987';
+      final String deviceId = prefs.getString('device_id') ?? '';
+      final String lt = prefs.getString('lt') ?? '';
+      final String ln = prefs.getString('ln') ?? '';
 
       final response = await http
           .post(

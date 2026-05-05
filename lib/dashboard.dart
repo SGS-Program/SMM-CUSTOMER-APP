@@ -46,9 +46,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final prefs = await SharedPreferences.getInstance();
       final cid = prefs.getString('cid') ?? '';
       final cusId = prefs.getString('cus_id') ?? '';
-      final deviceId = prefs.getString('device_id') ?? '123';
-      final lt = prefs.getString('lt') ?? '0.0';
-      final ln = prefs.getString('ln') ?? '0.0';
+      final deviceId = prefs.getString('device_id') ?? '';
+      final lt = prefs.getString('lt') ?? '';
+      final ln = prefs.getString('ln') ?? '';
 
       final token = prefs.getString('token') ?? '';
 

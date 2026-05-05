@@ -3,7 +3,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class ComplaintDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> complaint;
@@ -14,25 +17,160 @@ class ComplaintDetailsScreen extends StatefulWidget {
   State<ComplaintDetailsScreen> createState() => _ComplaintDetailsScreenState();
 }
 
-class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
-  bool _isInvoiceExpanded = false;
-  int _rating = 0; // 0 to 5 stars
+class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen>
+    with TickerProviderStateMixin {
+  int _rating = 0;
   final TextEditingController _feedbackController = TextEditingController();
   bool _isSubmitting = false;
+  String? _invoicePdfUrl;
+  String? _performaPdfUrl;
+  bool _isLoadingPdfUrls = true;
+
+  // Happy Code Card flip animation
+  late AnimationController _flipController;
+  late Animation<double> _flipAnimation;
+  bool _isFlipped = false;
+  bool _showFrontSide = true;
 
   @override
   void initState() {
     super.initState();
+
+    // Initialize flip animation controller
+    _flipController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+
+    _flipAnimation =
+        TweenSequence<double>([
+          TweenSequenceItem(
+            tween: Tween(
+              begin: 0.0,
+              end: math.pi / 2,
+            ).chain(CurveTween(curve: Curves.easeIn)),
+            weight: 50,
+          ),
+          TweenSequenceItem(
+            tween: Tween(
+              begin: -math.pi / 2,
+              end: 0.0,
+            ).chain(CurveTween(curve: Curves.easeOut)),
+            weight: 50,
+          ),
+        ]).animate(_flipController)..addListener(() {
+          // Switch face at the midpoint
+          if (_flipController.value >= 0.5 && _showFrontSide) {
+            setState(() => _showFrontSide = false);
+          } else if (_flipController.value < 0.5 && !_showFrontSide) {
+            setState(() => _showFrontSide = true);
+          }
+        });
+
     final photoUrl = widget.complaint['photo']?.toString();
     if (photoUrl != null && photoUrl.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         precacheImage(CachedNetworkImageProvider(photoUrl), context);
       });
     }
+    _fetchComplaintData();
+  }
+
+  void _toggleHappyCode() {
+    if (_flipController.isAnimating) return;
+    if (!_isFlipped) {
+      _flipController.forward();
+      setState(() => _isFlipped = true);
+    } else {
+      _flipController.reverse();
+      setState(() => _isFlipped = false);
+    }
+  }
+
+  Future<void> _fetchComplaintData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? cid = prefs.getString('cid');
+      final String? cusId = prefs.getString('cus_id');
+      final String? token = prefs.getString('token');
+      final String? deviceId = prefs.getString('device_id');
+      final String? ltVal = prefs.getString('lt');
+      final String? lnVal = prefs.getString('ln');
+
+      final url = Uri.parse('https://erpsmart.in/total/api/m_api/');
+
+      final response = await http
+          .post(
+            url,
+            body: {
+              'type': '7004',
+              'cid': cid ?? '44555666',
+              'token': token ?? '',
+              'device_id': deviceId ?? '123',
+              'lt': ltVal ?? '123',
+              'ln': lnVal ?? '987',
+              'cus_id': cusId ?? '143',
+            },
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['error'] == false && data['data'] != null) {
+          final List complaints = data['data'];
+          final currentId = widget.complaint['id']?.toString();
+
+          final currentComplaint = complaints.firstWhere(
+            (c) => c['id']?.toString() == currentId,
+            orElse: () => null,
+          );
+
+          if (currentComplaint != null) {
+            setState(() {
+              _invoicePdfUrl = currentComplaint['invoice_pdf_url'];
+              _performaPdfUrl = currentComplaint['performa_pdf_url'];
+              _isLoadingPdfUrls = false;
+            });
+          } else {
+            setState(() => _isLoadingPdfUrls = false);
+          }
+        } else {
+          setState(() => _isLoadingPdfUrls = false);
+        }
+      } else {
+        setState(() => _isLoadingPdfUrls = false);
+      }
+    } catch (e) {
+      debugPrint("Error fetching PDF URLs: $e");
+      setState(() => _isLoadingPdfUrls = false);
+    }
+  }
+
+  Future<void> _launchURL(String? urlString) async {
+    if (urlString == null || urlString.isEmpty || urlString == "null") {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("PDF URL not available")));
+      return;
+    }
+
+    final Uri url = Uri.parse(urlString);
+    try {
+      if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+        throw Exception('Could not launch $url');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error opening PDF: $e")));
+      }
+    }
   }
 
   @override
   void dispose() {
+    _flipController.dispose();
     _feedbackController.dispose();
     super.dispose();
   }
@@ -71,21 +209,23 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
 
       final url = Uri.parse('https://erpsmart.in/total/api/m_api/');
 
-      final response = await http.post(
-        url,
-        body: {
-          'type': '7009',
-          'cid': cid,
-          'token': token ?? '',
-          'device_id': deviceId ?? '123',
-          'lt': ltVal ?? '0.0',
-          'ln': lnVal ?? '0.0',
-          'cus_id': cusId,
-          'from_id': fromId,
-          'rating': _rating.toString(),
-          'feedback': feedback.isEmpty ? 'No feedback provided' : feedback,
-        },
-      ).timeout(const Duration(seconds: 15));
+      final response = await http
+          .post(
+            url,
+            body: {
+              'type': '7009',
+              'cid': cid,
+              'token': token ?? '',
+              'device_id': deviceId ?? '123',
+              'lt': ltVal ?? '0.0',
+              'ln': lnVal ?? '0.0',
+              'cus_id': cusId,
+              'from_id': fromId,
+              'rating': _rating.toString(),
+              'feedback': feedback.isEmpty ? 'No feedback provided' : feedback,
+            },
+          )
+          .timeout(const Duration(seconds: 15));
 
       if (!mounted) return;
 
@@ -173,110 +313,290 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Top Details Card
-            _buildDetailsCard(complaint),
+            _buildDetailsCard(complaint)
+                .animate()
+                .fade(duration: 400.ms)
+                .slideY(begin: 0.2, end: 0, curve: Curves.easeOutQuad),
 
-            // Happy Code Banner
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: Container(
+            // Invoice Buttons
+            if (!_isLoadingPdfUrls &&
+                (_invoicePdfUrl != null || _performaPdfUrl != null))
+              Padding(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 18,
-                ),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF2CB9E5), Color(0xFF1A91B8)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF2CB9E5).withOpacity(0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
+                  horizontal: 16,
+                  vertical: 5,
                 ),
                 child: Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        shape: BoxShape.circle,
+                    if (_invoicePdfUrl != null &&
+                        _invoicePdfUrl != "null" &&
+                        _invoicePdfUrl!.isNotEmpty)
+                      Expanded(
+                        child: _buildPdfButton(
+                          label: "View Invoice",
+                          icon: Icons.picture_as_pdf,
+                          color: const Color(0xFF2CB9E5),
+                          onTap: () => _launchURL(_invoicePdfUrl),
+                        ),
                       ),
-                      child: const Icon(
-                        Icons.vpn_key_rounded,
-                        color: Colors.white,
-                        size: 26,
+                    if (_invoicePdfUrl != null &&
+                        _performaPdfUrl != null &&
+                        _invoicePdfUrl != "null" &&
+                        _performaPdfUrl != "null" &&
+                        _invoicePdfUrl!.isNotEmpty &&
+                        _performaPdfUrl!.isNotEmpty)
+                      const SizedBox(width: 10),
+                    if (_performaPdfUrl != null &&
+                        _performaPdfUrl != "null" &&
+                        _performaPdfUrl!.isNotEmpty)
+                      Expanded(
+                        child: _buildPdfButton(
+                          label: "Sales Invoice",
+                          icon: Icons.receipt_long,
+                          color: const Color(0xFFFF9800),
+                          onTap: () => _launchURL(_performaPdfUrl),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 15),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Your Happy Code",
-                            style: GoogleFonts.outfit(
-                              color: Colors.white.withOpacity(0.8),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          Text(
-                            (complaint['hpy_code']?.toString() ?? '').isEmpty
-                                ? 'N/A'
-                                : complaint['hpy_code'].toString(),
-                            style: GoogleFonts.outfit(
-                              color: Colors.white,
-                              fontSize: 26,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 2.0,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Container(
-                    //   padding: const EdgeInsets.symmetric(
-                    //     horizontal: 12,
-                    //     vertical: 6,
-                    //   ),
-                    //   decoration: BoxDecoration(
-                    //     color: Colors.white.withOpacity(0.2),
-                    //     borderRadius: BorderRadius.circular(10),
-                    //   ),
-                    //   child: Text(
-                    //     "VALID",
-                    //     style: GoogleFonts.outfit(
-                    //       color: Colors.white,
-                    //       fontSize: 11,
-                    //       fontWeight: FontWeight.bold,
-                    //     ),
-                    //   ),
-                    // ),
                   ],
                 ),
-              ),
-            ),
+              ).animate().fade(delay: 100.ms).slideY(begin: 0.2, end: 0),
 
-            // View Invoice Section
-            // _buildInvoiceSection(),
+            // Happy Code Card with Flip Animation
+            _buildHappyCodeCard(complaint)
+                .animate()
+                .fade(delay: 200.ms)
+                .slideY(begin: 0.2, end: 0)
+                .scale(
+                  begin: const Offset(0.95, 0.95),
+                  end: const Offset(1, 1),
+                  curve: Curves.elasticOut,
+                  duration: 800.ms,
+                ),
 
             // Timeline Section
-            _buildTimelineSection(complaint),
+            _buildTimelineSection(
+              complaint,
+            ).animate().fade(delay: 300.ms).slideY(begin: 0.1, end: 0),
 
             // Technician Details Card - Only if assigned or completed
-            if (isAssigned) _buildTechnicianCard(complaint),
+            if (isAssigned)
+              _buildTechnicianCard(
+                complaint,
+              ).animate().fade(delay: 400.ms).slideY(begin: 0.1, end: 0),
 
             // Rating & Feedback Section - Only for Completed Complaints
-            if (isCompleted) _buildRatingFeedbackSection(),
+            if (isCompleted)
+              _buildRatingFeedbackSection()
+                  .animate()
+                  .fade(delay: 500.ms)
+                  .slideY(begin: 0.1, end: 0),
 
             const SizedBox(height: 30),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Happy Code flip card
+  Widget _buildHappyCodeCard(Map<String, dynamic> complaint) {
+    final happyCode = (complaint['hpy_code']?.toString() ?? '').isEmpty
+        ? 'N/A'
+        : complaint['hpy_code'].toString();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: GestureDetector(
+        onTap: _toggleHappyCode,
+        child: AnimatedBuilder(
+          animation: _flipAnimation,
+          builder: (context, child) {
+            return Transform(
+              alignment: Alignment.center,
+              transform: Matrix4.identity()
+                ..setEntry(3, 2, 0.001)
+                ..rotateY(_flipAnimation.value),
+              child: _showFrontSide
+                  ? _buildHappyCodeFront()
+                  : _buildHappyCodeBack(happyCode),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  /// Front face: "Tap to reveal" prompt
+  Widget _buildHappyCodeFront() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF2CB9E5), Color(0xFF1A91B8)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF2CB9E5).withOpacity(0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.vpn_key_rounded,
+              color: Colors.white,
+              size: 26,
+            ),
+          ),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Your Happy Code",
+                  style: GoogleFonts.outfit(
+                    color: Colors.white.withOpacity(0.8),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Text(
+                  "Tap to reveal",
+                  style: GoogleFonts.outfit(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.touch_app_rounded,
+                  color: Colors.white,
+                  size: 22,
+                ),
+              )
+              .animate(onPlay: (controller) => controller.repeat())
+              .scaleXY(
+                begin: 1.0,
+                end: 1.18,
+                duration: 700.ms,
+                curve: Curves.easeInOut,
+              )
+              .then()
+              .scaleXY(
+                begin: 1.18,
+                end: 1.0,
+                duration: 700.ms,
+                curve: Curves.easeInOut,
+              ),
+        ],
+      ),
+    );
+  }
+
+  /// Back face: actual Happy Code with shimmer
+  Widget _buildHappyCodeBack(String happyCode) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF1A91B8), Color(0xFF2CB9E5)],
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF2CB9E5).withOpacity(0.4),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.vpn_key_rounded,
+              color: Colors.white,
+              size: 26,
+            ),
+          ),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Your Happy Code",
+                  style: GoogleFonts.outfit(
+                    color: Colors.white.withOpacity(0.8),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Text(
+                      happyCode,
+                      style: GoogleFonts.outfit(
+                        color: Colors.white,
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2.0,
+                      ),
+                    )
+                    .animate(onPlay: (controller) => controller.repeat())
+                    .shimmer(
+                      duration: 2000.ms,
+                      color: Colors.white.withOpacity(0.4),
+                    ),
+              ],
+            ),
+          ),
+          // Tap again hint
+          GestureDetector(
+            onTap: _toggleHappyCode,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.flip_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -449,126 +769,129 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
   }
 
   Widget _buildDetailsCard(Map<String, dynamic> complaint) {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF3F4F6),
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildDetailRow("Name", complaint['name'] ?? 'N/A', isBold: true),
-          _buildDetailRow(
-            "Product",
-            complaint['product'] ?? 'N/A',
-            isBold: true,
-          ),
-          _buildDetailRow(
-            "Complaint title",
-            complaint['complaint_title'] ?? 'N/A',
-            isBold: true,
-          ),
-          _buildDetailRow(
-            "Preferred Visit date",
-            complaint['date'] ?? 'N/A',
-            isBold: true,
-          ),
-          _buildDetailRow(
-            "Complaint ID",
-            "#tk${complaint['id'] ?? '000'}",
-            isBold: true,
-          ),
-          _buildDetailRow(
-            "Ticket Raised date",
-            complaint['request_date'] ?? 'N/A',
-            isBold: true,
-          ),
+    return Hero(
+      tag: 'complaint_card_${complaint['id']}',
+      child: Container(
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF3F4F6),
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildDetailRow("Name", complaint['name'] ?? 'N/A', isBold: true),
+            _buildDetailRow(
+              "Product",
+              complaint['product'] ?? 'N/A',
+              isBold: true,
+            ),
+            _buildDetailRow(
+              "Complaint title",
+              complaint['complaint_title'] ?? 'N/A',
+              isBold: true,
+            ),
+            _buildDetailRow(
+              "Preferred Visit date",
+              complaint['date'] ?? 'N/A',
+              isBold: true,
+            ),
+            _buildDetailRow(
+              "Complaint ID",
+              "#tk${complaint['id'] ?? '000'}",
+              isBold: true,
+            ),
+            _buildDetailRow(
+              "Ticket Raised date",
+              complaint['request_date'] ?? 'N/A',
+              isBold: true,
+            ),
 
-          const Divider(height: 30, thickness: 1, color: Colors.black12),
+            const Divider(height: 30, thickness: 1, color: Colors.black12),
 
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                flex: 2,
-                child: Text(
-                  "Address",
-                  style: GoogleFonts.outfit(
-                    fontSize: 15,
-                    color: Colors.black54,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    "Address",
+                    style: GoogleFonts.outfit(
+                      fontSize: 15,
+                      color: Colors.black54,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                flex: 3,
-                child: Text(
-                  complaint['address'] ?? 'N/A',
-                  textAlign: TextAlign.right,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.outfit(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 3,
+                  child: Text(
+                    complaint['address'] ?? 'N/A',
+                    textAlign: TextAlign.right,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.outfit(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
 
-          const SizedBox(height: 20),
-          Text(
-            "Attached Photos / Videos",
-            style: GoogleFonts.outfit(fontSize: 15, color: Colors.black54),
-          ),
-          const SizedBox(height: 10),
-          GestureDetector(
-            onTap: () {
-              if (complaint['photo'] != null &&
-                  complaint['photo'].toString().isNotEmpty) {
-                _showFullScreenImage(context, complaint['photo']);
-              }
-            },
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child:
-                  complaint['photo'] != null &&
-                      complaint['photo'].toString().isNotEmpty
-                  ? CachedNetworkImage(
-                      imageUrl: complaint['photo'],
-                      width: 100,
-                      height: 80,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) =>
-                          const _ShimmerBox(width: 100, height: 80),
-                      errorWidget: (context, url, error) =>
-                          _buildPlaceholderImage(),
-                    )
-                  : _buildPlaceholderImage(),
+            const SizedBox(height: 20),
+            Text(
+              "Attached Photos / Videos",
+              style: GoogleFonts.outfit(fontSize: 15, color: Colors.black54),
             ),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            "Description",
-            style: GoogleFonts.outfit(
-              fontSize: 15,
-              color: Colors.black,
-              fontWeight: FontWeight.bold,
+            const SizedBox(height: 10),
+            GestureDetector(
+              onTap: () {
+                if (complaint['photo'] != null &&
+                    complaint['photo'].toString().isNotEmpty) {
+                  _showFullScreenImage(context, complaint['photo']);
+                }
+              },
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child:
+                    complaint['photo'] != null &&
+                        complaint['photo'].toString().isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: complaint['photo'],
+                        width: 100,
+                        height: 80,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) =>
+                            const _ShimmerBox(width: 100, height: 80),
+                        errorWidget: (context, url, error) =>
+                            _buildPlaceholderImage(),
+                      )
+                    : _buildPlaceholderImage(),
+              ),
             ),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            complaint['description'] ?? 'No description provided',
-            style: GoogleFonts.outfit(
-              fontSize: 14,
-              color: Colors.black87,
-              height: 1.4,
+            const SizedBox(height: 20),
+            Text(
+              "Description",
+              style: GoogleFonts.outfit(
+                fontSize: 15,
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 5),
+            Text(
+              complaint['description'] ?? 'No description provided',
+              style: GoogleFonts.outfit(
+                fontSize: 14,
+                color: Colors.black87,
+                height: 1.4,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -669,287 +992,37 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
     );
   }
 
-  Widget _buildInvoiceSection() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Column(
-        children: [
-          GestureDetector(
-            onTap: () {
-              setState(() {
-                _isInvoiceExpanded = !_isInvoiceExpanded;
-              });
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFECB3),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.assignment_outlined, color: Colors.black87),
-                  const SizedBox(width: 12),
-                  Text(
-                    "View Invoice",
-                    style: GoogleFonts.outfit(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  const Spacer(),
-                  Icon(
-                    _isInvoiceExpanded
-                        ? Icons.keyboard_arrow_up
-                        : Icons.keyboard_arrow_down,
-                    color: Colors.black87,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (_isInvoiceExpanded) _buildInvoiceDropdown(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInvoiceDropdown() {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F4F9),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(10),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          _buildInvoiceSectionHeader("Invoice Summary"),
-          _buildInvoiceContentRow("Invoice Number", "INV-2026-001"),
-          _buildInvoiceContentRow("Order ID", "ORD-55892"),
-          _buildInvoiceContentRow("Invoice Date", "10 May 2026"),
-          _buildInvoiceContentRow("Payment Status", "Paid", isPaid: true),
-          _buildInvoiceSectionHeader("Seller Details"),
-          _buildInvoiceContentRow("Company Name", "ABC Machinery Pvt ltd"),
-          _buildInvoiceContentRow("GST Number", "33ABCDE1234FGH"),
-          _buildInvoiceContentRow("Contact", "+91 98745 12345"),
-          _buildInvoiceContentRow("Email", "support@gmail.com"),
-          _buildInvoiceSectionHeader("Product / Service"),
-          _buildProductDetailRow("Breaker", value: "₹1,50,000", qty: "Qty(1)"),
-          _buildProductDetailRow("Service", value: "₹1000"),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            color: const Color(0xFF2CB9E5),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "Total",
-                  style: GoogleFonts.outfit(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                Text(
-                  "₹1,50,000",
-                  style: GoogleFonts.outfit(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                _buildSummaryCalculationRow("Subtotal", "₹1,50,000"),
-                _buildSummaryCalculationRow("GST(18%)", "₹27,900"),
-                _buildSummaryCalculationRow("Delivery charge", "₹2000"),
-                _buildSummaryCalculationRow("Discount", "-₹5,000"),
-                const SizedBox(height: 10),
-                const Divider(height: 1),
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "Total Amount",
-                      style: GoogleFonts.outfit(
-                        color: const Color(0xFF2CB9E5),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    Text(
-                      "₹1,79,900",
-                      style: GoogleFonts.outfit(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInvoiceSectionHeader(String title) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: const BoxDecoration(
-        color: Color(0xFF2CB9E5),
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(12),
-          topRight: Radius.circular(12),
-        ),
-      ),
-      width: double.infinity,
-      child: Text(
-        title,
-        style: GoogleFonts.outfit(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-          fontSize: 16,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInvoiceContentRow(
-    String label,
-    String value, {
-    bool isPaid = false,
+  Widget _buildPdfButton({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      color: Colors.grey.shade100,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: GoogleFonts.outfit(
-              color: Colors.grey.shade600,
-              fontSize: 14,
-            ),
-          ),
-          isPaid
-              ? Row(
-                  children: [
-                    const Icon(
-                      Icons.check_circle,
-                      color: Colors.green,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      value,
-                      style: GoogleFonts.outfit(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ],
-                )
-              : Text(
-                  value,
-                  style: GoogleFonts.outfit(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                    color: Colors.black87,
-                  ),
-                ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProductDetailRow(
-    String label, {
-    required String value,
-    String? qty,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      color: Colors.grey.shade100,
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(width: 8),
+            Text(
               label,
               style: GoogleFonts.outfit(
-                color: Colors.grey.shade600,
-                fontSize: 14,
-              ),
-            ),
-          ),
-          if (qty != null)
-            Expanded(
-              child: Text(
-                qty,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.outfit(
-                  color: Colors.grey.shade600,
-                  fontSize: 13,
-                ),
-              ),
-            ),
-          Expanded(
-            child: Text(
-              value,
-              textAlign: TextAlign.right,
-              style: GoogleFonts.outfit(
+                color: color,
                 fontWeight: FontWeight.bold,
                 fontSize: 14,
-                color: Colors.black87,
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSummaryCalculationRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: GoogleFonts.outfit(
-              color: Colors.grey.shade600,
-              fontSize: 14,
-            ),
-          ),
-          Text(
-            value,
-            style: GoogleFonts.outfit(
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-              color: Colors.black87,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1007,17 +1080,6 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
             isLineActive: isCompleted,
             index: 2,
           ),
-          // _buildTimelineItem(
-          //   title: "Expected date",
-          //   subtitle:
-          //       "Technician to reach you\n${_formatDateTime(complaint['expected_date'])}",
-          //   icon: Icons.hourglass_empty,
-          //   iconColor: Colors.green,
-          //   isLast: false,
-          //   isActive: isCompleted,
-          //   isLineActive: isCompleted,
-          //   index: 3,
-          // ),
           _buildTimelineItem(
             title: "Resolved",
             subtitle:

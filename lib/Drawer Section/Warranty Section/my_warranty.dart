@@ -33,9 +33,9 @@ class _MyWarrantyScreenState extends State<MyWarrantyScreen> {
       final String roleId = prefs.getString('role_id') ?? '';
       final String cusId = prefs.getString('cus_id') ?? '';
       final String token = prefs.getString('token') ?? '';
-      final String deviceId = prefs.getString('device_id') ?? '123';
-      final String lt = prefs.getString('lt') ?? '0.0';
-      final String ln = prefs.getString('ln') ?? '0.0';
+      final String deviceId = prefs.getString('device_id') ?? '';
+      final String lt = prefs.getString('lt') ?? '';
+      final String ln = prefs.getString('ln') ?? '';
 
       final response = await http
           .post(

@@ -5,7 +5,8 @@ class SupplierStatementScreen extends StatefulWidget {
   const SupplierStatementScreen({super.key});
 
   @override
-  State<SupplierStatementScreen> createState() => _SupplierStatementScreenState();
+  State<SupplierStatementScreen> createState() =>
+      _SupplierStatementScreenState();
 }
 
 class _SupplierStatementScreenState extends State<SupplierStatementScreen> {
@@ -104,17 +105,25 @@ class _SupplierStatementScreenState extends State<SupplierStatementScreen> {
                     color: Colors.black,
                   ),
                 ),
-                Text(
-                  "SUP-00045",
-                  style: GoogleFonts.outfit(
-                    fontSize: 14,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
+                // Text(
+                //   "SUP-00045",
+                //   style: GoogleFonts.outfit(
+                //     fontSize: 14,
+                //     color: Colors.grey.shade600,
+                //   ),
+                // ),
                 const SizedBox(height: 10),
                 _buildInfoRow(Icons.phone_outlined, "98765 54310"),
                 const SizedBox(height: 5),
-                _buildInfoRow(Icons.email_outlined, "info@srivenkateshwara.com"),
+                _buildInfoRow(
+                  Icons.email_outlined,
+                  "info@srivenkateshwara.com",
+                ),
+                const SizedBox(height: 5),
+                _buildInfoRow(
+                  Icons.location_on_outlined,
+                  "123, Main Road, Trichy - 620001",
+                ),
               ],
             ),
           ),
@@ -131,8 +140,8 @@ class _SupplierStatementScreenState extends State<SupplierStatementScreen> {
         Text(
           text,
           style: GoogleFonts.outfit(
-            fontSize: 13,
-            color: Colors.grey.shade700,
+            fontSize: 15,
+            color: Colors.black,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -197,11 +206,18 @@ class _SupplierStatementScreenState extends State<SupplierStatementScreen> {
             ),
             child: Row(
               children: [
-                Icon(Icons.calendar_today_outlined, size: 18, color: Colors.grey.shade400),
+                Icon(
+                  Icons.calendar_today_outlined,
+                  size: 18,
+                  color: Colors.grey.shade400,
+                ),
                 const SizedBox(width: 10),
                 Text(
                   "DD-MM-YEAR",
-                  style: GoogleFonts.outfit(color: Colors.grey.shade400, fontSize: 14),
+                  style: GoogleFonts.outfit(
+                    color: Colors.grey.shade400,
+                    fontSize: 14,
+                  ),
                 ),
               ],
             ),
@@ -220,9 +236,16 @@ class _SupplierStatementScreenState extends State<SupplierStatementScreen> {
               children: [
                 Text(
                   "Select Transaction",
-                  style: GoogleFonts.outfit(color: Colors.grey.shade400, fontSize: 14),
+                  style: GoogleFonts.outfit(
+                    color: Colors.grey.shade400,
+                    fontSize: 14,
+                  ),
                 ),
-                Icon(Icons.keyboard_arrow_down, size: 20, color: Colors.grey.shade400),
+                Icon(
+                  Icons.keyboard_arrow_down,
+                  size: 20,
+                  color: Colors.grey.shade400,
+                ),
               ],
             ),
           ),
@@ -248,13 +271,14 @@ class _SupplierStatementScreenState extends State<SupplierStatementScreen> {
         ),
         const SizedBox(height: 10),
         Divider(color: Colors.grey.shade200, height: 1),
-        
+
         // Table Rows
         ListView.separated(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: 10,
-          separatorBuilder: (context, index) => Divider(color: Colors.grey.shade100, height: 1),
+          separatorBuilder: (context, index) =>
+              Divider(color: Colors.grey.shade100, height: 1),
           itemBuilder: (context, index) {
             final isEven = index % 2 == 0;
             return Padding(
@@ -269,7 +293,12 @@ class _SupplierStatementScreenState extends State<SupplierStatementScreen> {
                     color: isEven ? Colors.green : Colors.red,
                     align: TextAlign.right,
                   ),
-                  _buildDataCell("₹ 4,2500", 2.0, color: Colors.green, align: TextAlign.right),
+                  _buildDataCell(
+                    "₹ 4,2500",
+                    2.0,
+                    color: Colors.green,
+                    align: TextAlign.right,
+                  ),
                 ],
               ),
             );
@@ -279,14 +308,18 @@ class _SupplierStatementScreenState extends State<SupplierStatementScreen> {
     );
   }
 
-  Widget _buildHeaderCell(String text, double flex, {TextAlign align = TextAlign.left}) {
+  Widget _buildHeaderCell(
+    String text,
+    double flex, {
+    TextAlign align = TextAlign.left,
+  }) {
     return Expanded(
       flex: (flex * 10).toInt(),
       child: Text(
         text,
         textAlign: align,
         style: GoogleFonts.outfit(
-          fontSize: 12,
+          fontSize: 16,
           color: Colors.grey.shade500,
           fontWeight: FontWeight.w500,
         ),
@@ -294,14 +327,19 @@ class _SupplierStatementScreenState extends State<SupplierStatementScreen> {
     );
   }
 
-  Widget _buildDataCell(String text, double flex, {Color color = Colors.black87, TextAlign align = TextAlign.left}) {
+  Widget _buildDataCell(
+    String text,
+    double flex, {
+    Color color = Colors.black87,
+    TextAlign align = TextAlign.left,
+  }) {
     return Expanded(
       flex: (flex * 10).toInt(),
       child: Text(
         text,
         textAlign: align,
         style: GoogleFonts.outfit(
-          fontSize: 12,
+          fontSize: 14,
           color: color,
           fontWeight: FontWeight.bold,
         ),

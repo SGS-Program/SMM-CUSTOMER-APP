@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:customer_smm/Login Section/login_screen.dart';
 import 'package:customer_smm/widgets/bottom_nav.dart';
+import 'package:customer_smm/raise_complaint_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -40,6 +41,10 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   Future<void> _navigateToNext() async {
     final prefs = await SharedPreferences.getInstance();
     final bool isLoggedIn = prefs.getBool('is_logged_in') ?? false;
+
+    if (isLoggedIn) {
+      RaiseComplaintScreen.fetchInitialData();
+    }
 
     Timer(const Duration(seconds: 3), () {
       if (mounted) {
