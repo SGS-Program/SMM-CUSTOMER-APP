@@ -25,6 +25,8 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen>
   String? _invoicePdfUrl;
   String? _performaPdfUrl;
   bool _isLoadingPdfUrls = true;
+  bool _isUpdatingStatus = false;
+  Map<String, dynamic>? _fullComplaintData;
 
   // Happy Code Card flip animation
   late AnimationController _flipController;
@@ -129,6 +131,7 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen>
             setState(() {
               _invoicePdfUrl = currentComplaint['invoice_pdf_url'];
               _performaPdfUrl = currentComplaint['performa_pdf_url'];
+              _fullComplaintData = currentComplaint;
               _isLoadingPdfUrls = false;
             });
           } else {
@@ -141,8 +144,91 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen>
         setState(() => _isLoadingPdfUrls = false);
       }
     } catch (e) {
-      debugPrint("Error fetching PDF URLs: $e");
+      debugPrint("Error fetching complaint data: $e");
       setState(() => _isLoadingPdfUrls = false);
+    }
+  }
+
+
+
+  Future<void> _updateSparesStatus() async {
+    setState(() => _isUpdatingStatus = true);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? cid = prefs.getString('cid');
+      final String? uid = prefs.getString('uid');
+      final String? roleId = prefs.getString('role_id');
+      final String? token = prefs.getString('token');
+      final String? deviceId = prefs.getString('device_id');
+      final String? ltVal = prefs.getString('lt');
+      final String? lnVal = prefs.getString('ln');
+      final String? ticketId = widget.complaint['id']?.toString();
+
+      final url = Uri.parse('https://erpsmart.in/total/api/m_api/');
+
+      final response = await http
+          .post(
+            url,
+            body: {
+              'type': '5040',
+              'cid': cid ?? '44555666',
+              'uid': uid ?? '5',
+              'role_id': roleId ?? '2',
+              'token': token ?? '',
+              'device_id': deviceId ?? '123',
+              'lt': ltVal ?? '0.0',
+              'ln': lnVal ?? '0.0',
+              'ticket_id': ticketId ?? '0',
+            },
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        if (data['error'] == false) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                data['message'] ?? "Spares Received & Status updated successfully",
+              ),
+              backgroundColor: const Color(0xFF43A047),
+            ),
+          );
+          // Refresh the data to reflect updated status
+          _fetchComplaintData();
+        } else {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(data['message'] ?? "Failed to update status"),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Server error. Please try again."),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Error: ${e.toString()}"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isUpdatingStatus = false);
+      }
     }
   }
 
@@ -351,7 +437,7 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen>
                         _performaPdfUrl!.isNotEmpty)
                       Expanded(
                         child: _buildPdfButton(
-                          label: "Sales Invoice",
+                          label: "View Performa Invoice",
                           icon: Icons.receipt_long,
                           color: const Color(0xFFFF9800),
                           onTap: () => _launchURL(_performaPdfUrl),
@@ -372,6 +458,9 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen>
                   curve: Curves.elasticOut,
                   duration: 800.ms,
                 ),
+
+            // Spares Received Button
+            _buildSparesButton(),
 
             // Timeline Section
             _buildTimelineSection(
@@ -1013,12 +1102,16 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen>
           children: [
             Icon(icon, color: color, size: 20),
             const SizedBox(width: 8),
-            Text(
-              label,
-              style: GoogleFonts.outfit(
-                color: color,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
+            Flexible(
+              child: Text(
+                label,
+                style: GoogleFonts.outfit(
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
             ),
           ],
@@ -1234,6 +1327,83 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen>
             isBold: true,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSparesButton() {
+    final complaint = _fullComplaintData ?? widget.complaint;
+    final statusIdStr = complaint['status_id']?.toString() ?? '0';
+    final statusId = int.tryParse(statusIdStr) ?? 0;
+    final bool isReceived = statusId >= 9;
+
+    // Show button if status_id > 5
+    if (statusId <= 5) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: LinearGradient(
+            colors: isReceived
+                ? [const Color(0xFF43A047), const Color(0xFF2E7D32)]
+                : [const Color(0xFF66BB6A), const Color(0xFF43A047)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF43A047).withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: ElevatedButton(
+          onPressed: (_isUpdatingStatus || isReceived)
+              ? null
+              : () {
+                  _updateSparesStatus();
+                },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.transparent,
+            shadowColor: Colors.transparent,
+            disabledBackgroundColor: Colors.transparent,
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            elevation: 0,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                isReceived ? Icons.verified_rounded : Icons.inventory_2_rounded,
+                color: Colors.white,
+                size: 24,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                _isUpdatingStatus
+                    ? "Updating..."
+                    : (isReceived ? "Spares Already Received" : "Mark Spares Received"),
+                style: GoogleFonts.outfit(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ).animate().fade(delay: 150.ms).slideY(begin: 0.2, end: 0).shimmer(
+        delay: 1000.ms,
+        duration: 2000.ms,
+        color: Colors.white.withOpacity(0.2),
       ),
     );
   }

@@ -147,7 +147,7 @@ class _AllQuotationsScreenState extends State<AllQuotationsScreen> {
   }
 
   Widget _buildFilters() {
-    final filters = ["ALL", "SREND", "PENDING", "DRAFT"];
+    final filters = ["ALL", "SEND", "PENDING", "DRAFT"];
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 20),
